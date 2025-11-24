@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   Cell,
@@ -109,10 +110,15 @@ const chartConfig = {
   },
 };
 
+// Add modal account info for the Add Menu modal
+const modalAccount = { name: "Cash", balance: 800000 };
+
 export default function DashboardPage() {
   const [hasGoal, setHasGoal] = useState(false); // Initially no goal
+  const [showAddMenu, setShowAddMenu] = useState(false);
   const [showAddAmountModal, setShowAddAmountModal] = useState(false);
   const [addAmount, setAddAmount] = useState("");
+  const router = useRouter();
 
   const [goal, setGoal] = useState({
     title: "Japan Trip",
@@ -132,6 +138,18 @@ export default function DashboardPage() {
     (sum, item) => sum + item.value,
     0
   );
+
+  // small percentage changes to show in the pie headers (adjust as needed)
+  const incomeChangePercent = 10; // positive => green
+  const expenseChangePercent = -4; // negative => red
+
+  // compute savings for the latest month (pemasukkan - pengeluaran)
+  const latestMonth = monthlyData[monthlyData.length - 1];
+  const savingsThisMonth = latestMonth
+    ? latestMonth.pemasukkan - latestMonth.pengeluaran
+    : 0;
+  const savingsFormatted = Math.abs(savingsThisMonth).toLocaleString("id-ID");
+  const isSavingsPositive = savingsThisMonth >= 0;
 
   const handleAddSavings = () => {
     if (addAmount) {
@@ -283,6 +301,32 @@ export default function DashboardPage() {
               </BarChart>
             </ResponsiveContainer>
           </ChartContainer>
+
+          {/* Keterangan singkat di bawah grafik */}
+          <div className="mt-4">
+            <div className="flex items-center gap-3 bg-gray-100 rounded-lg px-4 py-3 max-w-md">
+              <div className="w-8 h-8 rounded-md bg-black flex items-center justify-center text-white">
+                i
+              </div>
+              <div className="text-sm text-gray-700">
+                <span>Kamu </span>
+                <span className="font-semibold">
+                  {isSavingsPositive
+                    ? "menghemat"
+                    : "mengeluarkan lebih banyak dari pemasukkan"}
+                </span>
+                <span> </span>
+                <span
+                  className={`font-semibold ${
+                    isSavingsPositive ? "text-green-600" : "text-red-600"
+                  }`}
+                >
+                  Rp {savingsFormatted}
+                </span>
+                <span> di bulan ini</span>
+              </div>
+            </div>
+          </div>
         </CardContent>
       </Card>
 
@@ -291,59 +335,75 @@ export default function DashboardPage() {
         {/* Income Pie Chart */}
         <Card className="shadow-lg">
           <CardHeader>
-            <CardTitle className="text-lg">Breakdown Pemasukkan</CardTitle>
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-gray-600">
-                Sumber pemasukkan bulan ini
-              </span>
-            </div>
+            <CardTitle className="text-lg">Grafik Pemasukkan</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-center justify-between mb-4">
-              <span className="text-2xl font-bold text-green-600">
-                Rp {totalIncomeData.toLocaleString("id-ID")}
-              </span>
-              <span className="text-sm text-gray-600">Total</span>
+              <div className="flex flex-col">
+                <span className="text-sm font-medium text-gray-700">
+                  Minggu ini
+                </span>
+                <span className="text-2xl font-bold text-black">
+                  Rp {totalIncomeData.toLocaleString("id-ID")}
+                </span>
+              </div>
+              <div className="text-right">
+                <div className="text-xs text-gray-500">
+                  vs periode sebelumnya
+                </div>
+                <div
+                  className={`mt-1 text-sm font-semibold ${
+                    incomeChangePercent >= 0 ? "text-green-600" : "text-red-600"
+                  }`}
+                >
+                  {incomeChangePercent >= 0 ? "+" : ""}
+                  {incomeChangePercent}%
+                </div>
+              </div>
             </div>
 
-            <ChartContainer config={chartConfig} className="h-[300px] w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={pemasukanData}
-                    cx="50%"
-                    cy="50%"
-                    outerRadius={80}
-                    innerRadius={40}
-                    paddingAngle={5}
-                    dataKey="value"
-                  >
-                    {pemasukanData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.fill} />
-                    ))}
-                  </Pie>
-                  <ChartTooltip
-                    content={<ChartTooltipContent />}
-                    formatter={(value: number) => [
-                      `Rp ${value.toLocaleString("id-ID")}`,
-                      "Jumlah",
-                    ]}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
-            </ChartContainer>
+            {/* Chart + Legend side-by-side */}
+            <div className="flex items-center gap-6">
+              <div className="w-2/3 h-[300px]">
+                <ChartContainer config={chartConfig} className="h-full w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={pemasukanData}
+                        cx="50%"
+                        cy="50%"
+                        outerRadius={80}
+                        innerRadius={40}
+                        paddingAngle={5}
+                        dataKey="value"
+                      >
+                        {pemasukanData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.fill} />
+                        ))}
+                      </Pie>
+                      <ChartTooltip
+                        content={<ChartTooltipContent />}
+                        formatter={(value: number) => [
+                          `Rp ${value.toLocaleString("id-ID")}`,
+                          "Jumlah",
+                        ]}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </ChartContainer>
+              </div>
 
-            {/* Legend */}
-            <div className="grid grid-cols-2 gap-2 mt-4">
-              {pemasukanData.map((item, index) => (
-                <div key={index} className="flex items-center gap-2">
-                  <div
-                    className="w-3 h-3 rounded-full"
-                    style={{ backgroundColor: item.fill }}
-                  />
-                  <span className="text-sm text-gray-600">{item.name}</span>
-                </div>
-              ))}
+              <div className="w-1/3 h-[300px] flex flex-col justify-center items-start space-y-2">
+                {pemasukanData.map((item, index) => (
+                  <div key={index} className="flex items-center gap-2">
+                    <div
+                      className="w-2 h-2 rounded-full"
+                      style={{ backgroundColor: item.fill }}
+                    />
+                    <span className="text-xs text-gray-600">{item.name}</span>
+                  </div>
+                ))}
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -351,59 +411,77 @@ export default function DashboardPage() {
         {/* Expense Pie Chart */}
         <Card className="shadow-lg">
           <CardHeader>
-            <CardTitle className="text-lg">Breakdown Pengeluaran</CardTitle>
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-gray-600">
-                Kategori pengeluaran bulan ini
-              </span>
-            </div>
+            <CardTitle className="text-lg">Grafik Pengeluaran</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-center justify-between mb-4">
-              <span className="text-2xl font-bold text-red-600">
-                Rp {totalExpenseData.toLocaleString("id-ID")}
-              </span>
-              <span className="text-sm text-gray-600">Total</span>
+              <div className="flex flex-col">
+                <span className="text-sm font-medium text-gray-700">
+                  Minggu ini
+                </span>
+                <span className="text-2xl font-bold text-black">
+                  Rp {totalExpenseData.toLocaleString("id-ID")}
+                </span>
+              </div>
+              <div className="text-right">
+                <div className="text-xs text-gray-500">
+                  vs periode sebelumnya
+                </div>
+                <div
+                  className={`mt-1 text-sm font-semibold ${
+                    expenseChangePercent >= 0
+                      ? "text-green-600"
+                      : "text-red-600"
+                  }`}
+                >
+                  {expenseChangePercent >= 0 ? "+" : ""}
+                  {expenseChangePercent}%
+                </div>
+              </div>
             </div>
 
-            <ChartContainer config={chartConfig} className="h-[300px] w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={pengeluaranData}
-                    cx="50%"
-                    cy="50%"
-                    outerRadius={80}
-                    innerRadius={40}
-                    paddingAngle={5}
-                    dataKey="value"
-                  >
-                    {pengeluaranData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.fill} />
-                    ))}
-                  </Pie>
-                  <ChartTooltip
-                    content={<ChartTooltipContent />}
-                    formatter={(value: number) => [
-                      `Rp ${value.toLocaleString("id-ID")}`,
-                      "Jumlah",
-                    ]}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
-            </ChartContainer>
+            {/* Chart + Legend side-by-side */}
+            <div className="flex items-center gap-6">
+              <div className="w-2/3 h-[300px]">
+                <ChartContainer config={chartConfig} className="h-full w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={pengeluaranData}
+                        cx="50%"
+                        cy="50%"
+                        outerRadius={80}
+                        innerRadius={40}
+                        paddingAngle={5}
+                        dataKey="value"
+                      >
+                        {pengeluaranData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.fill} />
+                        ))}
+                      </Pie>
+                      <ChartTooltip
+                        content={<ChartTooltipContent />}
+                        formatter={(value: number) => [
+                          `Rp ${value.toLocaleString("id-ID")}`,
+                          "Jumlah",
+                        ]}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </ChartContainer>
+              </div>
 
-            {/* Legend */}
-            <div className="grid grid-cols-2 gap-2 mt-4">
-              {pengeluaranData.map((item, index) => (
-                <div key={index} className="flex items-center gap-2">
-                  <div
-                    className="w-3 h-3 rounded-full"
-                    style={{ backgroundColor: item.fill }}
-                  />
-                  <span className="text-sm text-gray-600">{item.name}</span>
-                </div>
-              ))}
+              <div className="w-1/3 h-[300px] flex flex-col justify-center items-start space-y-2">
+                {pengeluaranData.map((item, index) => (
+                  <div key={index} className="flex items-center gap-2">
+                    <div
+                      className="w-2 h-2 rounded-full"
+                      style={{ backgroundColor: item.fill }}
+                    />
+                    <span className="text-xs text-gray-600">{item.name}</span>
+                  </div>
+                ))}
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -458,22 +536,69 @@ export default function DashboardPage() {
         </CardContent>
       </Card>
 
-      {/* Floating Action Button */}
-      <Link href="/user/transactions/add">
-        <Button
-          className="fixed bottom-6 right-6 w-14 h-14 rounded-full bg-green-500 hover:bg-green-600 shadow-lg"
-          size="icon"
-        >
-          <Plus className="w-6 h-6" />
-        </Button>
-      </Link>
+      {/* Floating Action Button - opens add menu modal */}
+      <Button
+        onClick={() => setShowAddMenu(true)}
+        className="fixed bottom-6 right-6 w-14 h-14 rounded-full bg-green-500 hover:bg-green-600 shadow-lg"
+        size="icon"
+      >
+        <Plus className="w-6 h-6" />
+      </Button>
 
-      {/* Page Indicators */}
-      <div className="flex justify-center mt-6 gap-2">
-        <div className="w-2 h-2 rounded-full bg-green-500"></div>
-        <div className="w-2 h-2 rounded-full bg-gray-300"></div>
-        <div className="w-2 h-2 rounded-full bg-gray-300"></div>
-      </div>
+      {/* Add Menu Modal */}
+      <Dialog open={showAddMenu} onOpenChange={setShowAddMenu}>
+        <DialogContent className="max-w-xs mx-auto">
+          <div className="p-4 space-y-3">
+            {/* top card with account name + amount (minimal) */}
+            <div className="bg-gray-200 rounded-lg p-4 text-center">
+              <div className="text-lg font-bold">{modalAccount.name}</div>
+              <div className="text-xl font-semibold mt-2">
+                Rp {modalAccount.balance.toLocaleString("id-ID")}
+              </div>
+            </div>
+
+            {/* small pager dots */}
+            <div className="flex justify-center mt-2">
+              <div className="w-6 h-2 rounded-full bg-green-600" />
+              <div className="w-2 h-2 rounded-full bg-gray-300 ml-2" />
+              <div className="w-2 h-2 rounded-full bg-gray-300 ml-2" />
+            </div>
+
+            {/* action buttons */}
+            <div className="flex flex-col gap-3 mt-3">
+              <Button
+                className="w-full h-12 bg-gray-300 hover:bg-gray-300 text-white rounded-lg"
+                onClick={() => {
+                  setShowAddMenu(false);
+                  // router.push('/user/transactions/upload'); // optional
+                }}
+              >
+                Upload
+              </Button>
+
+              <Button
+                className="w-full h-12 bg-gray-400 hover:bg-gray-400 text-white rounded-lg"
+                onClick={() => {
+                  setShowAddMenu(false);
+                  router.push("/user/transactions/add");
+                }}
+              >
+                Manual
+              </Button>
+
+              <Button
+                className="w-full h-12 bg-green-600 hover:bg-green-700 text-white rounded-lg"
+                onClick={() => {
+                  setShowAddMenu(false);
+                  // router.push('/user/transactions/photo');
+                }}
+              >
+                Foto
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Add Amount Modal - Only show if hasGoal */}
       {hasGoal && (
