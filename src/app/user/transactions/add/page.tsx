@@ -27,19 +27,27 @@ export default function AddTransactionPage() {
   });
 
   const incomeCategories = [
-    "Gaji",
-    "Freelance",
+    "Makanan & Minuman",
+    "Belanja",
+    "Rumah",
+    "Kendaraan",
+    "Hiburan",
+    "Keuangan",
+    "Komunikasi",
     "Investasi",
-    "Bonus",
+    "Pemasukkan",
     "Lainnya",
   ];
   const expenseCategories = [
-    "Makanan",
-    "Transportasi",
-    "Hiburan",
-    "Tagihan",
+    "Makanan & Minuman",
     "Belanja",
-    "Kesehatan",
+    "Rumah",
+    "Kendaraan",
+    "Hiburan",
+    "Keuangan",
+    "Komunikasi",
+    "Investasi",
+    "Pemasukkan",
     "Lainnya",
   ];
 
@@ -132,64 +140,59 @@ function TransactionForm({
       className="space-y-4 sm:space-y-6 max-w-md mx-auto"
     >
       {/* Cash Balance Display */}
-      <Card className="bg-gray-100">
+      <Card className="bg-gray-200 border-none">
         <CardContent className="pt-4 sm:pt-6">
           <div className="text-center">
-            <p className="text-xs sm:text-sm text-gray-600 mb-1">Cash</p>
-            <p className="text-base sm:text-lg font-bold">Rp 800.000</p>
+            <p className="text-sm sm:text-base font-bold mb-1">Cash</p>
+            <p className="text-base sm:text-lg font-semibold">Rp 800.000</p>
           </div>
         </CardContent>
       </Card>
 
       {/* Amount Input */}
-      <div className="text-center py-4 sm:py-6">
-        <Input
-          type="number"
-          placeholder="0"
-          value={formData.amount}
-          onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
-          className="text-center text-2xl sm:text-3xl lg:text-4xl font-light border-none text-gray-400 bg-transparent mb-2 sm:mb-4"
-        />
-        <p className="text-3xl sm:text-4xl lg:text-6xl font-light text-gray-300">
+      <div className="space-y-3">
+        <p className="text-4xl sm:text-5xl lg:text-6xl font-light text-gray-400 text-center">
           Rp{" "}
           {formData.amount
             ? Number(formData.amount).toLocaleString("id-ID")
             : "0"}
         </p>
+
+        {/* Amount input — sekarang seragam dengan input lain */}
+        <Input
+          id="amount"
+          type="number"
+          inputMode="numeric"
+          placeholder="0"
+          value={formData.amount}
+          onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
+          className="w-full bg-gray-200 border-none h-12 sm:h-14 text-sm sm:text-base rounded-xl px-4 py-0 text-center"
+        />
       </div>
 
       {/* Form Fields */}
       <div className="space-y-3 sm:space-y-4">
         <div>
-          <Label htmlFor="note" className="text-sm sm:text-base font-medium">
-            Catatan
-          </Label>
           <Input
             id="note"
-            placeholder="Tambahkan catatan..."
+            placeholder="Catatan"
             value={formData.note}
             onChange={(e) => setFormData({ ...formData, note: e.target.value })}
-            className="mt-1 sm:mt-2 bg-gray-100 border-none h-10 sm:h-12 text-sm sm:text-base"
+            className="w-full bg-gray-200 border-none h-12 sm:h-14 text-sm sm:text-base rounded-xl px-4 py-0"
           />
         </div>
 
         <div>
-          <Label
-            htmlFor="category"
-            className="text-sm sm:text-base font-medium"
-          >
-            Kategori
-          </Label>
           <Select
             value={formData.category}
             onValueChange={(value) =>
               setFormData({ ...formData, category: value })
             }
           >
-            <SelectTrigger className="mt-1 sm:mt-2 bg-gray-100 border-none h-10 sm:h-12 text-sm sm:text-base">
-              <SelectValue placeholder="Pilih kategori..." />
+            <SelectTrigger className="w-full bg-gray-200 border-none h-12 sm:h-14 text-sm sm:text-base rounded-xl px-4 py-0">
+              <SelectValue placeholder="Kategori" />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="w-full">
               {categories.map((category) => (
                 <SelectItem key={category} value={category}>
                   {category}
@@ -200,44 +203,30 @@ function TransactionForm({
         </div>
 
         <div className="grid grid-cols-2 gap-3 sm:gap-4">
-          <div>
-            <Label htmlFor="date" className="text-sm sm:text-base font-medium">
-              Date
-            </Label>
-            <Input
-              id="date"
-              type="date"
-              value={formData.date}
-              onChange={(e) =>
-                setFormData({ ...formData, date: e.target.value })
-              }
-              className="mt-1 sm:mt-2 bg-gray-100 border-none h-10 sm:h-12 text-sm sm:text-base"
-            />
-          </div>
+          <Input
+            id="date"
+            type="date"
+            value={formData.date}
+            onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+            className="w-full bg-gray-200 border-none h-12 sm:h-14 text-sm sm:text-base rounded-xl px-4 py-0 appearance-none"
+          />
 
-          <div>
-            <Label htmlFor="time" className="text-sm sm:text-base font-medium">
-              Time
-            </Label>
-            <Input
-              id="time"
-              type="time"
-              value={formData.time}
-              onChange={(e) =>
-                setFormData({ ...formData, time: e.target.value })
-              }
-              className="mt-1 sm:mt-2 bg-gray-100 border-none h-10 sm:h-12 text-sm sm:text-base"
-            />
-          </div>
+          <Input
+            id="time"
+            type="time"
+            value={formData.time}
+            onChange={(e) => setFormData({ ...formData, time: e.target.value })}
+            className="w-full bg-gray-200 border-none h-12 sm:h-14 text-sm sm:text-base rounded-xl px-4 py-0 appearance-none"
+          />
         </div>
       </div>
 
       {/* Submit Button */}
       <Button
         type="submit"
-        className={`w-full h-11 sm:h-12 text-base sm:text-lg font-medium ${
+        className={`w-full h-12 sm:h-14 text-base sm:text-lg font-semibold rounded-xl ${
           type === "pemasukkan"
-            ? "bg-green-500 hover:bg-green-600"
+            ? "bg-green-600 hover:bg-green-700"
             : "bg-red-500 hover:bg-red-600"
         }`}
       >
