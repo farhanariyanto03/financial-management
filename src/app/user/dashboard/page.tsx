@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -22,7 +22,7 @@ import {
   ChartTooltipContent,
 } from "@/components/ui/chart";
 import { Button } from "@/components/ui/button";
-import { Plus, ArrowUp, ArrowDown, ChevronDown } from "lucide-react";
+import { Plus, ArrowUp, ArrowDown, ChevronDown, LogOut } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import {
   Dialog,
@@ -31,6 +31,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { supabase } from "@/lib/supabaseClient";
+import { getAuthUser } from "@/lib/utils";
 
 // Sample data for expense chart
 const expenseData = [
@@ -114,10 +116,13 @@ const chartConfig = {
 const modalAccount = { name: "Cash", balance: 800000 };
 
 export default function DashboardPage() {
-  const [hasGoal, setHasGoal] = useState(false); // Initially no goal
+  const [hasGoal] = useState(false);
   const [showAddMenu, setShowAddMenu] = useState(false);
   const [showAddAmountModal, setShowAddAmountModal] = useState(false);
   const [addAmount, setAddAmount] = useState("");
+  const [isLoading, setIsLoading] = useState(true);
+  const [userId, setUserId] = useState<string | null>(null);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
   const router = useRouter();
 
   const [goal, setGoal] = useState({
@@ -162,14 +167,81 @@ export default function DashboardPage() {
     }
   };
 
+  // Logout function
+  const handleLogout = async () => {
+    setIsLoggingOut(true);
+    try {
+      // Sign out dari Supabase
+      await supabase.auth.signOut();
+
+      // Hapus cookies via API
+      await fetch("/api/auth/logout", {
+        method: "POST",
+      });
+
+      // Redirect ke login
+      router.push("/login");
+      router.refresh();
+    } catch (error) {
+      console.error("Logout error:", error);
+      alert("Gagal logout");
+      setIsLoggingOut(false);
+    }
+  };
+
+  // Check authentication
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const { user, error } = await getAuthUser();
+
+        if (error || !user) {
+          router.push("/login");
+          return;
+        }
+
+        setUserId(user.id);
+      } catch (error) {
+        console.error("Auth check error:", error);
+        router.push("/login");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    checkAuth();
+  }, [router]);
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-500 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 p-4 pb-20">
       {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold mb-2">Dashboard</h1>
-        <p className="text-sm text-muted-foreground">
-          Selamat datang di halaman dashboard!
-        </p>
+      <div className="mb-6 flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold mb-2">Dashboard</h1>
+          <p className="text-sm text-muted-foreground">
+            Selamat datang di halaman dashboard!
+          </p>
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleLogout}
+          disabled={isLoggingOut}
+          className="flex items-center gap-2 text-red-600 border-red-600 hover:bg-red-50"
+        >
+          <LogOut className="w-4 h-4" />
+          {isLoggingOut ? "Keluar..." : "Logout"}
+        </Button>
       </div>
 
       {/* Goal Section - Show empty state or actual goal */}
@@ -181,7 +253,7 @@ export default function DashboardPage() {
                 <div className="text-gray-400 text-lg font-medium mb-4">
                   Goal
                 </div>
-                <Link href="/user/goals">
+                <Link href="/user/goals/add">
                   <Button
                     variant="outline"
                     className="w-full h-12 text-green-500 border-green-500 hover:bg-green-50 rounded-lg"

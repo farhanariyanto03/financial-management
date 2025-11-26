@@ -1,27 +1,14 @@
-import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import { supabase } from "@/lib/supabaseClient";
 import { NextResponse } from "next/server";
+import { supabase } from "@/lib/supabaseClient";
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
 export async function POST(req: Request) {
-  const { username, email, password, name } = await req.json();
+  const { username, password, email, role, kas, initial_balance } =
+    await req.json();
 
-  // Cek username unik
-  const { data: existing } = await supabaseAdmin
-    .from("profiles")
-    .select("id")
-    .eq("username", username)
-    .maybeSingle();
-
-  if (existing) {
-    return NextResponse.json(
-      { error: "Username sudah digunakan" },
-      { status: 400 }
-    );
-  }
-
-  // Buat user di Supabase Auth
+  // Create user on Supabase Auth
   const { data: authData, error: authError } = await supabase.auth.signUp({
-    email,
+    email: email || `${username}@app.local`,
     password,
   });
 
@@ -29,17 +16,24 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: authError.message }, { status: 400 });
   }
 
-  // Insert profile ke table profiles
-  const { error: insertError } = await supabaseAdmin.from("profiles").insert({
-    id: authData.user?.id,
-    username,
-    email,
-    name,
-  });
-
-  if (insertError) {
-    return NextResponse.json({ error: insertError.message }, { status: 400 });
+  const userId = authData.user?.id;
+  if (!userId) {
+    return NextResponse.json({ error: "User not created" }, { status: 500 });
   }
 
-  return NextResponse.json({ message: "Register berhasil" });
+  // Insert profile using supabaseAdmin → bypass RLS
+  const { error: profileError } = await supabaseAdmin.from("profiles").insert({
+    id: userId,
+    username,
+    email: email || `${username}@app.local`,
+    role: role || "user",
+    kas: kas || 0,
+    initial_balance: initial_balance || 0,
+  });
+
+  if (profileError) {
+    return NextResponse.json({ error: profileError.message }, { status: 400 });
+  }
+
+  return NextResponse.json({ message: "User registered successfully" });
 }
