@@ -1,11 +1,10 @@
-import { showToastError } from "@/components/ui/alertToast";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { NextResponse } from "next/server";
 
 export async function POST(req: Request) {
   const { username, password } = await req.json();
 
-  // Cari email berdasarkan username
+  // Cari email dari username
   const { data: profile, error: profileError } = await supabaseAdmin
     .from("profiles")
     .select("email")
@@ -13,10 +12,13 @@ export async function POST(req: Request) {
     .single();
 
   if (!profile || profileError) {
-    return showToastError("Username tidak ditemukan");
+    return NextResponse.json(
+      { error: "Username tidak ditemukan" },
+      { status: 404 }
+    );
   }
 
-  // Login pakai email menggunakan supabaseAdmin
+  // Login supabase
   const { data, error: loginError } =
     await supabaseAdmin.auth.signInWithPassword({
       email: profile.email,
@@ -24,10 +26,10 @@ export async function POST(req: Request) {
     });
 
   if (loginError) {
-    return NextResponse.json({ error: loginError.message }, { status: 401 });
+    return NextResponse.json({ error: "Password salah" }, { status: 401 });
   }
 
-  // Set session cookie
+  // Set cookie & response
   const response = NextResponse.json({
     message: "Login success",
     user: data.user,
@@ -39,14 +41,14 @@ export async function POST(req: Request) {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
-      maxAge: 60 * 60 * 24 * 7, // 7 days
+      maxAge: 60 * 60 * 24 * 7,
     });
 
     response.cookies.set("sb-refresh-token", data.session.refresh_token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
-      maxAge: 60 * 60 * 24 * 7, // 7 days
+      maxAge: 60 * 60 * 24 * 7,
     });
   }
 
