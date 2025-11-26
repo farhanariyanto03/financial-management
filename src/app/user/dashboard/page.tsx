@@ -116,7 +116,7 @@ const chartConfig = {
 const modalAccount = { name: "Cash", balance: 800000 };
 
 export default function DashboardPage() {
-  const [hasGoal] = useState(false);
+  const [hasGoal, setHasGoal] = useState(false);
   const [showAddMenu, setShowAddMenu] = useState(false);
   const [showAddAmountModal, setShowAddAmountModal] = useState(false);
   const [addAmount, setAddAmount] = useState("");
@@ -125,15 +125,17 @@ export default function DashboardPage() {
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const router = useRouter();
 
-  const [goal, setGoal] = useState({
-    title: "Japan Trip",
-    currentAmount: 6200000,
-    targetAmount: 20000000,
-    targetDate: "20/12/25",
-    minWeekly: 40000,
-  });
+  const [goal, setGoal] = useState<{
+    id: string;
+    destination: string;
+    current_amount: number;
+    total_budget: number;
+    start_date: string;
+    end_date: string;
+    minWeekly: number;
+  } | null>(null);
 
-  const progress = (goal.currentAmount / goal.targetAmount) * 100;
+  const progress = goal ? (goal.current_amount / goal.total_budget) * 100 : 0;
   const totalExpense = expenseData.reduce((sum, item) => sum + item.value, 0);
   const totalExpenseData = pengeluaranData.reduce(
     (sum, item) => sum + item.value,
@@ -156,14 +158,42 @@ export default function DashboardPage() {
   const savingsFormatted = Math.abs(savingsThisMonth).toLocaleString("id-ID");
   const isSavingsPositive = savingsThisMonth >= 0;
 
-  const handleAddSavings = () => {
-    if (addAmount) {
-      setGoal((prev) => ({
-        ...prev,
-        currentAmount: prev.currentAmount + Number(addAmount),
-      }));
-      setAddAmount("");
-      setShowAddAmountModal(false);
+  const handleAddSavings = async () => {
+    if (!addAmount || !goal) return;
+
+    try {
+      const response = await fetch("/api/goal/savings", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          goal_id: goal.id,
+          amount: Number(addAmount),
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        // Update local state
+        setGoal((prev) =>
+          prev
+            ? {
+                ...prev,
+                current_amount: data.totalSavings,
+              }
+            : null
+        );
+        setAddAmount("");
+        setShowAddAmountModal(false);
+        alert("Tabungan berhasil ditambahkan!");
+      } else {
+        alert(`Error: ${data.error}`);
+      }
+    } catch (error) {
+      console.error("Error adding savings:", error);
+      alert("Gagal menambahkan tabungan");
     }
   };
 
@@ -189,6 +219,52 @@ export default function DashboardPage() {
     }
   };
 
+  // Fetch goal data
+  useEffect(() => {
+    const fetchGoal = async () => {
+      if (!userId) return;
+
+      try {
+        const response = await fetch(`/api/goal?user_id=${userId}`);
+        const data = await response.json();
+
+        if (data.goal) {
+          const targetDate = new Date(data.goal.end_date);
+          const today = new Date();
+          const daysRemaining = Math.ceil(
+            (targetDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
+          );
+          const weeksRemaining = Math.ceil(daysRemaining / 7);
+
+          // Calculate remaining amount and min weekly
+          const remainingAmount =
+            data.goal.total_budget - (data.goal.current_amount || 0);
+          const minWeekly =
+            weeksRemaining > 0
+              ? Math.ceil(remainingAmount / weeksRemaining)
+              : 0;
+
+          setGoal({
+            id: data.goal.id,
+            destination: data.goal.destination,
+            current_amount: data.goal.current_amount || 0,
+            total_budget: data.goal.total_budget,
+            start_date: data.goal.start_date,
+            end_date: data.goal.end_date,
+            minWeekly,
+          });
+          setHasGoal(true);
+        } else {
+          setHasGoal(false);
+        }
+      } catch (error) {
+        console.error("Error fetching goal:", error);
+      }
+    };
+
+    fetchGoal();
+  }, [userId]);
+
   // Check authentication
   useEffect(() => {
     const checkAuth = async () => {
@@ -210,6 +286,16 @@ export default function DashboardPage() {
     };
     checkAuth();
   }, [router]);
+
+  // Format date
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString("id-ID", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "2-digit",
+    });
+  };
 
   if (isLoading) {
     return (
@@ -244,7 +330,7 @@ export default function DashboardPage() {
         </Button>
       </div>
 
-      {/* Goal Section - Show empty state or actual goal */}
+      {/* Goal Section */}
       {!hasGoal ? (
         <div className="mb-6">
           <Card className="w-full bg-white shadow-lg border-2 border-dashed border-gray-300">
@@ -269,49 +355,67 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
         </div>
-      ) : (
-        <Card className="mb-6 shadow-lg">
-          <CardHeader className="pb-4">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-lg">{goal.title}</CardTitle>
-              <div className="flex items-center gap-2">
-                <span className="text-2xl font-bold text-green-500">
+      ) : goal ? (
+        <Card className="mb-6 shadow-lg border-0 rounded-2xl overflow-hidden">
+          <CardContent className="p-6">
+            {/* Header with title and add button */}
+            <div className="flex items-start justify-between mb-4">
+              <h3 className="text-xl font-bold">{goal.destination}</h3>
+              <Button
+                size="icon"
+                variant="ghost"
+                className="w-12 h-12 rounded-full bg-green-500 hover:bg-green-600 text-white flex-shrink-0 -mt-1 -mr-1"
+                onClick={() => setShowAddAmountModal(true)}
+              >
+                <Plus className="w-6 h-6" />
+              </Button>
+            </div>
+
+            {/* Progress bar with percentage on the right */}
+            <div className="mb-4">
+              <div className="flex items-center justify-between mb-2">
+                <Progress value={progress} className="h-2 flex-1 mr-3" />
+                <span className="text-2xl font-bold text-green-600 min-w-[60px] text-right">
                   {progress.toFixed(0)}%
                 </span>
-                <Button
-                  size="sm"
-                  className="bg-green-500 hover:bg-green-600"
-                  onClick={() => setShowAddAmountModal(true)}
-                >
-                  <Plus className="w-4 h-4" />
-                </Button>
               </div>
             </div>
-            <Progress value={progress} className="mt-2 h-2" />
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              <div className="flex justify-between items-center">
-                <span className="text-lg font-semibold">
-                  Rp {goal.currentAmount.toLocaleString("id-ID")} /{" "}
-                  {goal.targetAmount.toLocaleString("id-ID")}
+
+            {/* Amount display */}
+            <div className="mb-6">
+              <div className="flex items-baseline gap-1">
+                <span className="text-base text-gray-600">Rp</span>
+                <span className="text-2xl font-bold text-black">
+                  {goal.current_amount.toLocaleString("id-ID")}
+                </span>
+                <span className="text-base text-gray-600 mx-1">/</span>
+                <span className="text-xl font-semibold text-green-600">
+                  {goal.total_budget.toLocaleString("id-ID")}
                 </span>
               </div>
-              <div className="flex justify-between text-sm text-gray-600">
-                <span>
-                  Min week to reach goal: Rp{" "}
-                  {goal.minWeekly.toLocaleString("id-ID")}
+            </div>
+
+            {/* Min weekly amount */}
+            <div className="flex items-center justify-between mb-3 pb-3 border-b border-gray-200">
+              <span className="text-sm text-gray-600">
+                Min week to reach goal
+              </span>
+              <span className="text-base font-bold text-black">
+                Rp {goal.minWeekly.toLocaleString("id-ID")}
+              </span>
+            </div>
+
+            {/* Target date with edit button */}
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-gray-600">Target Date</span>
+              <div className="flex items-center gap-3">
+                <span className="text-base font-bold text-black">
+                  {formatDate(goal.end_date)}
                 </span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-600">
-                  Target Date: {goal.targetDate}
-                </span>
-                <Link href="/user/goals">
+                <Link href={`/user/goals/update/${goal.id}`}>
                   <Button
-                    variant="outline"
                     size="sm"
-                    className="text-green-500 border-green-500 hover:bg-green-50"
+                    className="bg-green-500 hover:bg-green-600 text-white h-8 px-5 rounded-lg font-medium"
                   >
                     Edit
                   </Button>
@@ -320,7 +424,7 @@ export default function DashboardPage() {
             </div>
           </CardContent>
         </Card>
-      )}
+      ) : null}
 
       {/* Bar Chart - Income vs Expense Comparison */}
       <Card className="mb-6 shadow-lg">
@@ -673,17 +777,17 @@ export default function DashboardPage() {
       </Dialog>
 
       {/* Add Amount Modal - Only show if hasGoal */}
-      {hasGoal && (
+      {hasGoal && goal && (
         <Dialog open={showAddAmountModal} onOpenChange={setShowAddAmountModal}>
           <DialogContent className="max-w-sm mx-auto">
             <DialogHeader>
-              <DialogTitle className="text-center text-xl font-semibold">
+              <DialogTitle className="text-center text-xl font-bold">
                 Tambah Tabungan
               </DialogTitle>
             </DialogHeader>
             <div className="space-y-6 p-4">
               <div className="text-center">
-                <div className="text-6xl font-light text-gray-400 mb-4">
+                <div className="text-5xl font-light text-gray-400 mb-6">
                   Rp{" "}
                   {addAmount ? Number(addAmount).toLocaleString("id-ID") : "0"}
                 </div>
@@ -692,12 +796,12 @@ export default function DashboardPage() {
                   placeholder="Masukkan jumlah..."
                   value={addAmount}
                   onChange={(e) => setAddAmount(e.target.value)}
-                  className="text-center text-lg border-none bg-gray-100 h-12"
+                  className="text-center text-xl border-2 border-gray-200 bg-white h-14 rounded-xl"
                 />
               </div>
               <Button
                 onClick={handleAddSavings}
-                className="w-full bg-green-500 hover:bg-green-600 text-white rounded-xl h-12 font-medium"
+                className="w-full bg-green-500 hover:bg-green-600 text-white rounded-xl h-12 font-semibold text-base"
                 disabled={!addAmount || Number(addAmount) <= 0}
               >
                 Tetapkan
