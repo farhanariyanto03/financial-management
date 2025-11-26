@@ -23,7 +23,6 @@ import {
 } from "@/components/ui/chart";
 import { Button } from "@/components/ui/button";
 import { Plus, ArrowUp, ArrowDown, ChevronDown, LogOut } from "lucide-react";
-import { Progress } from "@/components/ui/progress";
 import {
   Dialog,
   DialogContent,
@@ -33,6 +32,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/lib/supabaseClient";
 import { getAuthUser } from "@/lib/utils";
+import { showToastSuccess } from "@/components/ui/alertToast";
 
 // Sample data for expense chart
 const expenseData = [
@@ -187,7 +187,7 @@ export default function DashboardPage() {
         );
         setAddAmount("");
         setShowAddAmountModal(false);
-        alert("Tabungan berhasil ditambahkan!");
+        showToastSuccess("Berhasil menambahkan tabungan");
       } else {
         alert(`Error: ${data.error}`);
       }
@@ -371,10 +371,17 @@ export default function DashboardPage() {
               </Button>
             </div>
 
-            {/* Progress bar with percentage on the right */}
+            {/* Progress bar with percentage on the right (custom green bar) */}
             <div className="mb-4">
               <div className="flex items-center justify-between mb-2">
-                <Progress value={progress} className="h-2 flex-1 mr-3" />
+                <div className="h-2 flex-1 mr-3 bg-gray-200 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-green-600"
+                    style={{
+                      width: `${Math.max(0, Math.min(100, progress))}%`,
+                    }}
+                  />
+                </div>
                 <span className="text-2xl font-bold text-green-600 min-w-[60px] text-right">
                   {progress.toFixed(0)}%
                 </span>
@@ -430,7 +437,7 @@ export default function DashboardPage() {
       <Card className="mb-6 shadow-lg">
         <CardHeader>
           <CardTitle className="text-lg">
-            Pemasukkan & Pengeluaran (6 Bulan Terakhir)
+            Grafik Arus Kas
           </CardTitle>
           <div className="flex justify-between items-center">
             <span className="text-sm text-gray-600">

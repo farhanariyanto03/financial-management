@@ -1,12 +1,23 @@
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { NextResponse } from "next/server";
 
+// simple UUID v4 format check
+const isValidUUID = (id?: string) =>
+  typeof id === "string" &&
+  /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(
+    id
+  );
+
 export async function GET(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params;
+    const { id } = await params;
+
+    if (!isValidUUID(id)) {
+      return NextResponse.json({ error: "Invalid goal id" }, { status: 400 });
+    }
 
     // Get goal
     const { data: goal, error: goalError } = await supabaseAdmin
@@ -46,10 +57,15 @@ export async function GET(
 
 export async function PUT(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params;
+    const { id } = await params;
+
+    if (!isValidUUID(id)) {
+      return NextResponse.json({ error: "Invalid goal id" }, { status: 400 });
+    }
+
     const body = await req.json();
     const { destination, start_date, end_date, total_budget, goal_items } =
       body;

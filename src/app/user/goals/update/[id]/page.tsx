@@ -4,6 +4,8 @@ import { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { getAuthUser } from "@/lib/utils";
 import { useRouter, useParams } from "next/navigation";
 import { showToastError, showToastSuccess } from "@/components/ui/alertToast";
@@ -46,9 +48,18 @@ export default function UpdateGoalPage() {
   // Fetch goal data
   useEffect(() => {
     const fetchGoal = async () => {
+      // guard: don't call API if goalId is not ready
+      if (!goalId) return;
+
       try {
         const response = await fetch(`/api/goal/${goalId}`);
         const data = await response.json();
+
+        if (!response.ok) {
+          console.error("API error fetching goal:", data);
+          showToastError(data.error || "Failed to load goal data");
+          return;
+        }
 
         if (data.goal) {
           setFormData({
@@ -65,10 +76,14 @@ export default function UpdateGoalPage() {
           let emergency = "";
 
           data.goal.items?.forEach((item: any, index: number) => {
+            const formattedAmount = item.cost_idr
+              ? new Intl.NumberFormat("id-ID").format(Number(item.cost_idr))
+              : "";
+
             const budgetItem: BudgetItem = {
               id: `${index}`,
               description: item.item_name,
-              amount: item.cost_idr.toString(),
+              amount: formattedAmount,
             };
 
             if (item.item_name === "Emergency pocket") {
@@ -88,7 +103,12 @@ export default function UpdateGoalPage() {
           if (accom.length > 0) setAccommodations(accom);
           if (act.length > 0) setActivities(act);
           if (misc.length > 0) setMiscellaneous(misc);
-          if (emergency) setEmergencyPocketAmount(emergency);
+          // Emergency pocket: format as localized string if present
+          if (emergency) {
+            setEmergencyPocketAmount(
+              new Intl.NumberFormat("id-ID").format(Number(emergency))
+            );
+          }
         }
       } catch (error) {
         console.error("Error fetching goal:", error);
@@ -279,11 +299,200 @@ export default function UpdateGoalPage() {
         <h1 className="text-xl font-bold">Edit Trip</h1>
       </div>
 
-      {/* Form - Same as Add page */}
+      {/* Form - same layout as Add page */}
       <form onSubmit={handleSubmit} className="space-y-6 max-w-md mx-auto">
-        {/* Same form fields as add page... */}
-        {/* Copy the entire form from add page */}
+        {/* Destination */}
+        <div>
+          <Label
+            htmlFor="destination"
+            className="text-sm font-semibold mb-2 block"
+          >
+            Destination
+          </Label>
+          <Input
+            id="destination"
+            placeholder="Jepang, Tokyo"
+            value={formData.destination}
+            onChange={(e) =>
+              setFormData({ ...formData, destination: e.target.value })
+            }
+            className="bg-white border border-gray-300 h-12 rounded-lg"
+          />
+        </div>
+
+        {/* Time */}
+        <div>
+          <Label className="text-sm font-semibold mb-2 block">Time</Label>
+          <div className="flex items-center gap-3">
+            <Input
+              type="date"
+              value={formData.timeFrom}
+              onChange={(e) =>
+                setFormData({ ...formData, timeFrom: e.target.value })
+              }
+              className="bg-white border border-gray-300 h-12 rounded-lg flex-1"
+            />
+            <span className="text-sm font-medium">to</span>
+            <Input
+              type="date"
+              value={formData.timeTo}
+              onChange={(e) =>
+                setFormData({ ...formData, timeTo: e.target.value })
+              }
+              className="bg-white border border-gray-300 h-12 rounded-lg flex-1"
+            />
+          </div>
+        </div>
+
+        {/* Transportation */}
+        <BudgetSection
+          title="Transportation"
+          items={transportation}
+          setItems={setTransportation}
+          updateItem={updateItem}
+          addItem={addItem}
+        />
+
+        {/* Accommodations */}
+        <BudgetSection
+          title="Accommodations"
+          items={accommodations}
+          setItems={setAccommodations}
+          updateItem={updateItem}
+          addItem={addItem}
+        />
+
+        {/* Activities */}
+        <BudgetSection
+          title="Activities"
+          items={activities}
+          setItems={setActivities}
+          updateItem={updateItem}
+          addItem={addItem}
+        />
+
+        {/* Miscellaneous */}
+        <BudgetSection
+          title="Miscellaneous"
+          items={miscellaneous}
+          setItems={setMiscellaneous}
+          updateItem={updateItem}
+          addItem={addItem}
+        />
+
+        {/* Emergency pocket - single label + input */}
+        <div>
+          <Label className="text-sm font-semibold mb-3 block">
+            Emergency pocket
+          </Label>
+          <div className="relative">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">
+              IDR
+            </span>
+            <Input
+              type="text"
+              placeholder="5,000,000"
+              value={emergencyPocketAmount}
+              onChange={(e) => setEmergencyPocketAmount(e.target.value)}
+              className="bg-white border border-gray-300 h-12 rounded-lg pl-12 pr-3 text-right font-medium"
+            />
+          </div>
+        </div>
+
+        {/* ====== Total Budget & Action ====== */}
+        <div className="mt-6 text-center">
+          <h3 className="text-base font-medium mb-4">Total Budget</h3>
+
+          <div className="mx-auto max-w-sm">
+            <div className="border rounded-lg py-4 px-6 mb-4 flex items-center justify-center">
+              <span className="text-sm text-gray-600 mr-3">IDR</span>
+              <span className="text-3xl font-bold">{formattedTotal}</span>
+            </div>
+
+            <Button
+              type="submit"
+              disabled={isSubmitting}
+              className="w-full bg-[#169d53] hover:bg-[#128a45] text-white py-3 rounded-lg font-medium transition duration-200 disabled:opacity-50"
+            >
+              {isSubmitting ? "Menyimpan..." : "Tetapkan"}
+            </Button>
+          </div>
+        </div>
+        {/* ====== end Total Budget ====== */}
       </form>
+    </div>
+  );
+}
+
+interface BudgetSectionProps {
+  title: string;
+  items: BudgetItem[];
+  setItems: React.Dispatch<React.SetStateAction<BudgetItem[]>>;
+  updateItem: (
+    items: BudgetItem[],
+    setItems: React.Dispatch<React.SetStateAction<BudgetItem[]>>,
+    id: string,
+    field: "description" | "amount",
+    value: string
+  ) => void;
+  addItem: (
+    items: BudgetItem[],
+    setItems: React.Dispatch<React.SetStateAction<BudgetItem[]>>
+  ) => void;
+}
+
+function BudgetSection({
+  title,
+  items,
+  setItems,
+  updateItem,
+  addItem,
+}: BudgetSectionProps) {
+  return (
+    <div>
+      <Label className="text-sm font-semibold mb-3 block">{title}</Label>
+      <div className="space-y-3">
+        {items.map((item) => (
+          <div key={item.id} className="flex gap-3">
+            <Input
+              placeholder="Plane"
+              value={item.description}
+              onChange={(e) =>
+                updateItem(
+                  items,
+                  setItems,
+                  item.id,
+                  "description",
+                  e.target.value
+                )
+              }
+              className="flex-1 bg-white border border-gray-300 h-12 rounded-lg px-4"
+            />
+            <div className="relative w-36">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">
+                IDR
+              </span>
+              <Input
+                type="text"
+                placeholder="10,000,000"
+                value={item.amount}
+                onChange={(e) =>
+                  updateItem(items, setItems, item.id, "amount", e.target.value)
+                }
+                className="bg-white border border-gray-300 h-12 rounded-lg pl-12 pr-3 text-right font-medium"
+              />
+            </div>
+          </div>
+        ))}
+        <Button
+          type="button"
+          variant="outline"
+          className="w-full h-12 border border-gray-300 rounded-lg text-gray-500 hover:bg-gray-50 font-normal bg-gray-100 text-sm"
+          onClick={() => addItem(items, setItems)}
+        >
+          + Tambah
+        </Button>
+      </div>
     </div>
   );
 }
