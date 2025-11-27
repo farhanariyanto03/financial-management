@@ -439,10 +439,10 @@ export default function DashboardPage() {
 
           <Button
             size="icon"
-            className="absolute top-1 -right-13 w-10 h-10 rounded-sm bg-green-500 hover:bg-green-600 text-white shadow-xl z-20"
+            className="absolute top-1 -right-13 w-10 h-10 rounded-full bg-white hover:bg-green-600 text-white shadow-xl z-20"
             onClick={() => setShowAddAmountModal(true)}
           >
-            <Plus className="w-7 h-7" />
+            <Plus className="w-7 h-7 text-green-500" />
           </Button>
         </div>
       ) : null}
