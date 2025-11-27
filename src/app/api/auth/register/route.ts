@@ -25,9 +25,9 @@ export async function POST(req: Request) {
   const { error: profileError } = await supabaseAdmin.from("profiles").insert({
     id: userId,
     username,
-    email: email || `${username}@app.local`,
+    email: email ? email : `${username}@app.local`,
     role: role || "user",
-    kas: kas || 0,
+    kas: kas || "-",
     initial_balance: initial_balance || 0,
   });
 

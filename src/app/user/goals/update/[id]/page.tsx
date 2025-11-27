@@ -16,6 +16,18 @@ interface BudgetItem {
   amount: string;
 }
 
+// Tambahkan helper di level modul agar bisa dipakai oleh komponen & BudgetSection
+const formatRupiah = (value: string) => {
+  const digits = String(value || "").replace(/\D/g, "");
+  return digits ? new Intl.NumberFormat("id-ID").format(Number(digits)) : "";
+};
+
+const parseAmount = (val: string) => {
+  if (!val) return 0;
+  const digits = String(val).replace(/[^\d]/g, "");
+  return digits ? parseInt(digits, 10) : 0;
+};
+
 export default function UpdateGoalPage() {
   const router = useRouter();
   const params = useParams();
@@ -239,12 +251,6 @@ export default function UpdateGoalPage() {
     }
   };
 
-  const parseAmount = (val: string) => {
-    if (!val) return 0;
-    const digits = val.replace(/[^\d]/g, "");
-    return digits ? parseInt(digits, 10) : 0;
-  };
-
   const total = useMemo(() => {
     const sumList = (items: BudgetItem[]) =>
       items.reduce((s, it) => s + parseAmount(it.amount), 0);
@@ -393,7 +399,9 @@ export default function UpdateGoalPage() {
               type="text"
               placeholder="5,000,000"
               value={emergencyPocketAmount}
-              onChange={(e) => setEmergencyPocketAmount(e.target.value)}
+              onChange={(e) =>
+                setEmergencyPocketAmount(formatRupiah(e.target.value))
+              }
               className="bg-white border border-gray-300 h-12 rounded-lg pl-12 pr-3 text-right font-medium"
             />
           </div>
@@ -477,7 +485,14 @@ function BudgetSection({
                 placeholder="10,000,000"
                 value={item.amount}
                 onChange={(e) =>
-                  updateItem(items, setItems, item.id, "amount", e.target.value)
+                  updateItem(
+                    items,
+                    setItems,
+                    item.id,
+                    "amount",
+                    // sekarang memanggil helper modul yang tersedia
+                    formatRupiah(e.target.value)
+                  )
                 }
                 className="bg-white border border-gray-300 h-12 rounded-lg pl-12 pr-3 text-right font-medium"
               />

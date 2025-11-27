@@ -56,6 +56,12 @@ export default function AddGoalPage() {
     setItems([...items, newItem]);
   };
 
+  const formatRupiah = (value: string) => {
+    const digits = String(value || "").replace(/\D/g, "");
+    if (!digits) return "";
+    return new Intl.NumberFormat("id-ID").format(Number(digits));
+  };
+
   const updateItem = (
     items: BudgetItem[],
     setItems: React.Dispatch<React.SetStateAction<BudgetItem[]>>,
@@ -63,8 +69,12 @@ export default function AddGoalPage() {
     field: "description" | "amount",
     value: string
   ) => {
+    // jika field adalah amount, format nilai ke format rupiah saat menyimpan
+    const newValue = field === "amount" ? formatRupiah(value) : value;
     setItems(
-      items.map((item) => (item.id === id ? { ...item, [field]: value } : item))
+      items.map((item) =>
+        item.id === id ? { ...item, [field]: newValue } : item
+      )
     );
   };
 
@@ -279,6 +289,7 @@ export default function AddGoalPage() {
         {/* Transportation */}
         <BudgetSection
           title="Transportation"
+          placeholder="Plane"
           items={transportation}
           setItems={setTransportation}
           updateItem={updateItem}
@@ -288,6 +299,7 @@ export default function AddGoalPage() {
         {/* Accommodations */}
         <BudgetSection
           title="Accommodations"
+          placeholder="Hotel"
           items={accommodations}
           setItems={setAccommodations}
           updateItem={updateItem}
@@ -297,6 +309,7 @@ export default function AddGoalPage() {
         {/* Activities */}
         <BudgetSection
           title="Activities"
+          placeholder="Culinary"
           items={activities}
           setItems={setActivities}
           updateItem={updateItem}
@@ -306,6 +319,7 @@ export default function AddGoalPage() {
         {/* Miscellaneous */}
         <BudgetSection
           title="Miscellaneous"
+          placeholder="SIM Card"
           items={miscellaneous}
           setItems={setMiscellaneous}
           updateItem={updateItem}
@@ -325,7 +339,9 @@ export default function AddGoalPage() {
               type="text"
               placeholder="5,000,000"
               value={emergencyPocketAmount}
-              onChange={(e) => setEmergencyPocketAmount(e.target.value)}
+              onChange={(e) =>
+                setEmergencyPocketAmount(formatRupiah(e.target.value))
+              }
               className="bg-white border border-gray-300 h-12 rounded-lg pl-12 pr-3 text-right font-medium"
             />
           </div>
@@ -358,6 +374,7 @@ export default function AddGoalPage() {
 
 interface BudgetSectionProps {
   title: string;
+  placeholder?: string;
   items: BudgetItem[];
   setItems: React.Dispatch<React.SetStateAction<BudgetItem[]>>;
   updateItem: (
@@ -375,6 +392,7 @@ interface BudgetSectionProps {
 
 function BudgetSection({
   title,
+  placeholder,
   items,
   setItems,
   updateItem,
@@ -387,8 +405,8 @@ function BudgetSection({
         {items.map((item) => (
           <div key={item.id} className="flex gap-3">
             <Input
-              placeholder="Plane"
               value={item.description}
+              placeholder={placeholder ?? ""}
               onChange={(e) =>
                 updateItem(
                   items,

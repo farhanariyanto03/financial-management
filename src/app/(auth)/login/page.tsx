@@ -18,18 +18,24 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
+      // Trim username sebelum kirim
+      const payload = {
+        ...form,
+        username: form.username.trim(),
+      };
+
       const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(form),
+        body: JSON.stringify(payload),
       });
 
       const data = await res.json();
 
       if (data.error) {
-        alert(data.error);
+        showToastError(data.error); // ganti alert dengan toast
         setLoading(false);
         return;
       }

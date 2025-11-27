@@ -2,21 +2,35 @@ import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { NextResponse } from "next/server";
 
 export async function POST(req: Request) {
-  const { username, password } = await req.json();
+  const body = await req.json();
+  const usernameRaw = body?.username;
+  const password = body?.password;
 
-  // Cari email dari username
-  const { data: profile, error: profileError } = await supabaseAdmin
+  if (!usernameRaw || !password) {
+    return NextResponse.json(
+      { error: "Username dan password harus diisi" },
+      { status: 400 }
+    );
+  }
+
+  // Normalisasi username (hilangkan spasi di ujung)
+  const username = String(usernameRaw).trim();
+
+  // Cari email dari username (case-insensitive)
+  const { data: profiles, error: profileError } = await supabaseAdmin
     .from("profiles")
     .select("email")
-    .eq("username", username)
-    .single();
+    .ilike("username", username) // ILIKE untuk pencarian case-insensitive
+    .limit(1);
 
-  if (!profile || profileError) {
+  if (profileError || !profiles || profiles.length === 0) {
     return NextResponse.json(
       { error: "Username tidak ditemukan" },
       { status: 404 }
     );
   }
+
+  const profile = profiles[0];
 
   // Login supabase
   const { data, error: loginError } =

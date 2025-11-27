@@ -169,7 +169,7 @@ export default function DashboardPage() {
         },
         body: JSON.stringify({
           goal_id: goal.id,
-          amount: Number(addAmount),
+          amount: parseAmount(addAmount),
         }),
       });
 
@@ -297,6 +297,18 @@ export default function DashboardPage() {
     });
   };
 
+  // helper: format angka ke format ID (ribuan dengan titik)
+  const formatRupiah = (value: string) => {
+    const digits = value.replace(/\D/g, "");
+    return digits ? new Intl.NumberFormat("id-ID").format(Number(digits)) : "";
+  };
+
+  // helper: parse string berformat rupiah -> number (mis. "1.000.000" -> 1000000)
+  const parseAmount = (value: string) => {
+    const digits = String(value || "").replace(/\D/g, "");
+    return digits ? Number(digits) : 0;
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -356,89 +368,89 @@ export default function DashboardPage() {
           </Card>
         </div>
       ) : goal ? (
-        <Card className="mb-6 shadow-lg border-0 rounded-2xl overflow-hidden">
-          <CardContent className="p-6">
-            {/* Header with title and add button */}
-            <div className="flex items-start justify-between mb-4">
-              <h3 className="text-xl font-bold">{goal.destination}</h3>
-              <Button
-                size="icon"
-                variant="ghost"
-                className="w-12 h-12 rounded-full bg-green-500 hover:bg-green-600 text-white flex-shrink-0 -mt-1 -mr-1"
-                onClick={() => setShowAddAmountModal(true)}
-              >
-                <Plus className="w-6 h-6" />
-              </Button>
-            </div>
+        <div className="relative mb-6 mr-6">
+          <Card className="shadow-lg border-0 rounded-2xl overflow-visible">
+            <CardContent className="p-6">
+              {/* Header with title only */}
+              <div className="mb-4">
+                <h3 className="text-xl font-bold">{goal.destination}</h3>
+              </div>
 
-            {/* Progress bar with percentage on the right (custom green bar) */}
-            <div className="mb-4">
-              <div className="flex items-center justify-between mb-2">
-                <div className="h-2 flex-1 mr-3 bg-gray-200 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-green-600"
-                    style={{
-                      width: `${Math.max(0, Math.min(100, progress))}%`,
-                    }}
-                  />
+              {/* Progress bar */}
+              <div className="mb-4">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="h-2 flex-1 mr-3 bg-gray-200 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-green-600"
+                      style={{
+                        width: `${Math.max(0, Math.min(100, progress))}%`,
+                      }}
+                    />
+                  </div>
+                  <span className="text-2xl font-bold text-green-600 min-w-[60px] text-right">
+                    {progress.toFixed(0)}%
+                  </span>
                 </div>
-                <span className="text-2xl font-bold text-green-600 min-w-[60px] text-right">
-                  {progress.toFixed(0)}%
-                </span>
               </div>
-            </div>
 
-            {/* Amount display */}
-            <div className="mb-6">
-              <div className="flex items-baseline gap-1">
-                <span className="text-base text-gray-600">Rp</span>
-                <span className="text-2xl font-bold text-black">
-                  {goal.current_amount.toLocaleString("id-ID")}
-                </span>
-                <span className="text-base text-gray-600 mx-1">/</span>
-                <span className="text-xl font-semibold text-green-600">
-                  {goal.total_budget.toLocaleString("id-ID")}
-                </span>
+              {/* Amount display */}
+              <div className="mb-6">
+                <div className="flex items-baseline gap-1">
+                  <span className="text-base text-gray-600">Rp</span>
+                  <span className="text-2xl font-bold text-black">
+                    {goal.current_amount.toLocaleString("id-ID")}
+                  </span>
+                  <span className="text-base text-gray-600 mx-1">/</span>
+                  <span className="text-xl font-semibold text-green-600">
+                    {goal.total_budget.toLocaleString("id-ID")}
+                  </span>
+                </div>
               </div>
-            </div>
 
-            {/* Min weekly amount */}
-            <div className="flex items-center justify-between mb-3 pb-3 border-b border-gray-200">
-              <span className="text-sm text-gray-600">
-                Min week to reach goal
-              </span>
-              <span className="text-base font-bold text-black">
-                Rp {goal.minWeekly.toLocaleString("id-ID")}
-              </span>
-            </div>
-
-            {/* Target date with edit button */}
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-600">Target Date</span>
-              <div className="flex items-center gap-3">
+              {/* Min weekly amount */}
+              <div className="flex items-center justify-between mb-3 pb-3 border-b border-gray-200">
+                <span className="text-sm text-gray-600">
+                  Min week to reach goal
+                </span>
                 <span className="text-base font-bold text-black">
-                  {formatDate(goal.end_date)}
+                  Rp {goal.minWeekly.toLocaleString("id-ID")}
                 </span>
-                <Link href={`/user/goals/update/${goal.id}`}>
-                  <Button
-                    size="sm"
-                    className="bg-green-500 hover:bg-green-600 text-white h-8 px-5 rounded-lg font-medium"
-                  >
-                    Edit
-                  </Button>
-                </Link>
               </div>
-            </div>
-          </CardContent>
-        </Card>
+
+              {/* Target date with edit button */}
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-gray-600">Target Date</span>
+                <div className="flex items-center gap-3">
+                  <span className="text-base font-bold text-black">
+                    {formatDate(goal.end_date)}
+                  </span>
+                  <Link href={`/user/goals/update/${goal.id}`}>
+                    <Button
+                      size="sm"
+                      className="bg-green-500 hover:bg-green-600 text-white h-8 px-5 rounded-lg font-medium"
+                    >
+                      Edit
+                    </Button>
+                  </Link>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Button
+            size="icon"
+            className="absolute top-1 -right-13 w-10 h-10 rounded-sm bg-green-500 hover:bg-green-600 text-white shadow-xl z-20"
+            onClick={() => setShowAddAmountModal(true)}
+          >
+            <Plus className="w-7 h-7" />
+          </Button>
+        </div>
       ) : null}
 
       {/* Bar Chart - Income vs Expense Comparison */}
-      <Card className="mb-6 shadow-lg">
+      <Card className="mb-6 shadow-lg mr-6">
         <CardHeader>
-          <CardTitle className="text-lg">
-            Grafik Arus Kas
-          </CardTitle>
+          <CardTitle className="text-lg">Grafik Arus Kas</CardTitle>
           <div className="flex justify-between items-center">
             <span className="text-sm text-gray-600">
               Perbandingan pemasukkan dan pengeluaran bulanan
@@ -514,7 +526,7 @@ export default function DashboardPage() {
       </Card>
 
       {/* Pie Charts - Income and Expense Breakdown */}
-      <div className="grid gap-4 grid-cols-1 lg:grid-cols-2 mb-6">
+      <div className="grid gap-4 grid-cols-1 lg:grid-cols-2 mb-6 mr-6">
         {/* Income Pie Chart */}
         <Card className="shadow-lg">
           <CardHeader>
@@ -671,7 +683,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Recent Transactions */}
-      <Card className="shadow-lg">
+      <Card className="shadow-lg mr-6">
         <CardHeader>
           <CardTitle className="text-lg">Pengeluaran Terakhir</CardTitle>
         </CardHeader>
@@ -786,7 +798,7 @@ export default function DashboardPage() {
       {/* Add Amount Modal - Only show if hasGoal */}
       {hasGoal && goal && (
         <Dialog open={showAddAmountModal} onOpenChange={setShowAddAmountModal}>
-          <DialogContent className="max-w-sm mx-auto">
+          <DialogContent className="max-w-sm mx-auto top-[15%] translate-y-0">
             <DialogHeader>
               <DialogTitle className="text-center text-xl font-bold">
                 Tambah Tabungan
@@ -795,21 +807,20 @@ export default function DashboardPage() {
             <div className="space-y-6 p-4">
               <div className="text-center">
                 <div className="text-5xl font-light text-gray-400 mb-6">
-                  Rp{" "}
-                  {addAmount ? Number(addAmount).toLocaleString("id-ID") : "0"}
+                  Rp {addAmount ? formatRupiah(addAmount) : "0"}
                 </div>
                 <Input
-                  type="number"
+                  type="text"
                   placeholder="Masukkan jumlah..."
                   value={addAmount}
-                  onChange={(e) => setAddAmount(e.target.value)}
+                  onChange={(e) => setAddAmount(formatRupiah(e.target.value))}
                   className="text-center text-xl border-2 border-gray-200 bg-white h-14 rounded-xl"
                 />
               </div>
               <Button
                 onClick={handleAddSavings}
                 className="w-full bg-green-500 hover:bg-green-600 text-white rounded-xl h-12 font-semibold text-base"
-                disabled={!addAmount || Number(addAmount) <= 0}
+                disabled={!addAmount || parseAmount(addAmount) <= 0}
               >
                 Tetapkan
               </Button>

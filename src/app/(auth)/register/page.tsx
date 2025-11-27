@@ -9,12 +9,18 @@ export default function RegisterPage() {
   const [form, setForm] = useState({
     name: "",
     username: "",
-    email: "",
+    // email: "",
     password: "",
-    kas: "", // added
-    initial_balance: "", // added (string to allow empty input)
+    kas: "",
+    initial_balance: "",
   });
   const [loading, setLoading] = useState(false);
+
+  // helper: format angka ke format ID (ribuan dengan titik)
+  const formatRupiah = (value: string) => {
+    const digits = value.replace(/\D/g, "");
+    return digits ? new Intl.NumberFormat("id-ID").format(Number(digits)) : "";
+  };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -30,12 +36,12 @@ export default function RegisterPage() {
           username: form.username,
           password: form.password,
           name: form.name,
-          email: form.email,
+          email: "",
           role: "user",
-          kas: form.kas, // send as-is (string). Adjust if your API expects numeric id.
+          kas: form.kas,
           initial_balance: form.initial_balance
-            ? Number(form.initial_balance)
-            : 0, // parse to number
+            ? Number(form.initial_balance.replace(/\D/g, ""))
+            : 0,
         }),
       });
 
@@ -84,7 +90,7 @@ export default function RegisterPage() {
               />
             </div>
 
-            <div>
+            {/* <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Email
               </label>
@@ -96,7 +102,7 @@ export default function RegisterPage() {
                 onChange={(e) => setForm({ ...form, email: e.target.value })}
                 required
               />
-            </div>
+            </div> */}
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -133,14 +139,17 @@ export default function RegisterPage() {
                 Jumlah Awal (initial balance)
               </label>
               <input
-                type="number"
-                min={0}
-                step="0.01"
+                type="text"
+                inputMode="numeric"
+                pattern="^[0-9.]*$"
                 className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-[#169d53] focus:border-transparent outline-none transition"
-                placeholder="0.00"
+                placeholder="0"
                 value={form.initial_balance}
                 onChange={(e) =>
-                  setForm({ ...form, initial_balance: e.target.value })
+                  setForm({
+                    ...form,
+                    initial_balance: formatRupiah(e.target.value),
+                  })
                 }
                 required
               />
