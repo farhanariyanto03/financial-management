@@ -30,20 +30,30 @@ export async function GET(
       return NextResponse.json({ error: goalError.message }, { status: 404 });
     }
 
-    // Get goal items
+    // Get goal items - pastikan join dengan goal_item_categories
     const { data: items, error: itemsError } = await supabaseAdmin
       .from("goal_items")
       .select(
         `
-        *,
-        goal_item_categories(name)
+        id,
+        goal_id,
+        category_id,
+        item_name,
+        cost_idr,
+        notes,
+        created_at,
+        goal_item_categories!inner(id, name)
       `
       )
       .eq("goal_id", id);
 
     if (itemsError) {
+      console.error("Error fetching goal items:", itemsError);
       return NextResponse.json({ error: itemsError.message }, { status: 500 });
     }
+
+    // Log untuk debug
+    console.log("Fetched items:", JSON.stringify(items, null, 2));
 
     return NextResponse.json({ goal: { ...goal, items } });
   } catch (error) {

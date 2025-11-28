@@ -5,21 +5,19 @@ export async function middleware(request: NextRequest) {
   const accessToken = request.cookies.get("sb-access-token")?.value;
   const refreshToken = request.cookies.get("sb-refresh-token")?.value;
 
-  // Jika user sudah login, redirect dari halaman auth ke dashboard
-  if (
-    (accessToken || refreshToken) &&
-    (request.nextUrl.pathname === "/login" ||
-      request.nextUrl.pathname === "/register")
-  ) {
+  const isAuthPage =
+    request.nextUrl.pathname === "/login" ||
+    request.nextUrl.pathname === "/register";
+
+  const isProtectedRoute = request.nextUrl.pathname.startsWith("/user");
+
+  // User sudah login, jangan boleh ke login/register
+  if ((accessToken || refreshToken) && isAuthPage) {
     return NextResponse.redirect(new URL("/user/dashboard", request.url));
   }
 
-  // Jika user belum login, redirect ke login
-  if (
-    !accessToken &&
-    !refreshToken &&
-    request.nextUrl.pathname.startsWith("/user")
-  ) {
+  // Jika token tidak ada atau session sudah mati → redirect ke login
+  if (!accessToken && !refreshToken && isProtectedRoute) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 

@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { showToastError, showToastSuccess } from "@/components/ui/alertToast";
 import { supabase } from "@/lib/supabaseClient";
+import { UserRound } from "lucide-react";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -64,7 +65,7 @@ export default function LoginPage() {
           {/* Logo */}
           <div className="flex flex-col items-center mb-8">
             <div className="w-16 h-16 rounded-full bg-[#169d53] flex items-center justify-center mb-3">
-              <span className="text-white font-bold text-2xl">GW</span>
+              <UserRound className="w-8 h-8 text-white" />
             </div>
             <span className="font-bold text-2xl text-[#169d53]">
               Goal Wallet

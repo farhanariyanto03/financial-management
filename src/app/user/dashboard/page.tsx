@@ -33,6 +33,7 @@ import { Input } from "@/components/ui/input";
 import { supabase } from "@/lib/supabaseClient";
 import { getAuthUser } from "@/lib/utils";
 import { showToastSuccess } from "@/components/ui/alertToast";
+import { group } from "console";
 
 // Sample data for expense chart
 const expenseData = [
@@ -176,12 +177,24 @@ export default function DashboardPage() {
       const data = await response.json();
 
       if (response.ok) {
-        // Update local state
+        // Recalculate minWeekly dengan current_amount yang baru
+        const targetDate = new Date(goal.end_date);
+        const today = new Date();
+        const daysRemaining = Math.ceil(
+          (targetDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
+        );
+        const weeksRemaining = Math.ceil(daysRemaining / 7);
+        const remainingAmount = goal.total_budget - data.totalSavings;
+        const newMinWeekly =
+          weeksRemaining > 0 ? Math.ceil(remainingAmount / weeksRemaining) : 0;
+
+        // Update local state dengan minWeekly yang baru
         setGoal((prev) =>
           prev
             ? {
                 ...prev,
                 current_amount: data.totalSavings,
+                minWeekly: newMinWeekly,
               }
             : null
         );
@@ -439,10 +452,10 @@ export default function DashboardPage() {
 
           <Button
             size="icon"
-            className="absolute top-1 -right-13 w-10 h-10 rounded-full bg-white hover:bg-green-600 text-white shadow-xl z-20"
+            className="absolute top-1 -right-13 w-10 h-10 rounded-full bg-white hover:bg-green-600 text-white shadow-xl z-20 group"
             onClick={() => setShowAddAmountModal(true)}
           >
-            <Plus className="w-7 h-7 text-green-500" />
+            <Plus className="w-7 h-7 text-green-500 group-hover:text-white" />
           </Button>
         </div>
       ) : null}

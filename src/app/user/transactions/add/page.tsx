@@ -1,12 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select,
@@ -15,9 +14,33 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useRouter } from "next/navigation";
+import { showToastSuccess, showToastError } from "@/components/ui/alertToast";
+
+// helper: format angka ke format ID (ribuan dengan titik)
+const formatRupiah = (value: string) => {
+  const digits = String(value || "").replace(/\D/g, "");
+  return digits ? new Intl.NumberFormat("id-ID").format(Number(digits)) : "";
+};
+
+// helper: parse string berformat rupiah -> number (mis. "1.000.000" -> 1000000)
+const parseAmount = (value: string) => {
+  const digits = String(value || "").replace(/\D/g, "");
+  return digits ? Number(digits) : 0;
+};
+
+interface Category {
+  id: string;
+  name: string;
+}
 
 export default function AddTransactionPage() {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState("pemasukkan");
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   const [formData, setFormData] = useState({
     amount: "",
     category: "",
@@ -26,37 +49,83 @@ export default function AddTransactionPage() {
     time: new Date().toTimeString().split(" ")[0].slice(0, 5),
   });
 
-  const incomeCategories = [
-    "Makanan & Minuman",
-    "Belanja",
-    "Rumah",
-    "Kendaraan",
-    "Hiburan",
-    "Keuangan",
-    "Komunikasi",
-    "Investasi",
-    "Pemasukkan",
-    "Lainnya",
-  ];
-  const expenseCategories = [
-    "Makanan & Minuman",
-    "Belanja",
-    "Rumah",
-    "Kendaraan",
-    "Hiburan",
-    "Keuangan",
-    "Komunikasi",
-    "Investasi",
-    "Pemasukkan",
-    "Lainnya",
-  ];
+  // Fetch categories from API
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const response = await fetch("/api/categories");
+        const data = await response.json();
 
-  const handleSubmit = (e: React.FormEvent) => {
+        if (response.ok) {
+          setCategories(data.categories || []);
+        } else {
+          showToastError("Failed to load categories");
+        }
+      } catch (error) {
+        console.error("Error fetching categories:", error);
+        showToastError("Failed to load categories");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchCategories();
+  }, []);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Handle form submission
-    console.log("Transaction data:", { ...formData, type: activeTab });
-    // Reset form or redirect
+
+    if (!formData.amount || !formData.category) {
+      showToastError("Mohon isi semua field yang wajib");
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      const response = await fetch("/api/transaction", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          type: activeTab,
+          amount: parseAmount(formData.amount),
+          note: formData.note,
+          category_id: formData.category,
+          date_transaction: formData.date,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        showToastSuccess("Transaksi berhasil dicatat!");
+        router.push("/user/dashboard");
+      } else if (response.status === 401) {
+        showToastError("Sesi telah berakhir, silakan login kembali");
+        router.push("/auth/login");
+      } else {
+        showToastError(data.error || "Gagal mencatat transaksi");
+      }
+    } catch (error) {
+      console.error("Error submitting transaction:", error);
+      showToastError("Terjadi kesalahan saat mencatat transaksi");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-500 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 p-3 sm:p-4 lg:p-6">
@@ -98,20 +167,22 @@ export default function AddTransactionPage() {
         <TabsContent value="pemasukkan" className="mt-4 sm:mt-6">
           <TransactionForm
             type="pemasukkan"
-            categories={incomeCategories}
+            categories={categories}
             formData={formData}
             setFormData={setFormData}
             onSubmit={handleSubmit}
+            isSubmitting={isSubmitting}
           />
         </TabsContent>
 
         <TabsContent value="pengeluaran" className="mt-4 sm:mt-6">
           <TransactionForm
             type="pengeluaran"
-            categories={expenseCategories}
+            categories={categories}
             formData={formData}
             setFormData={setFormData}
             onSubmit={handleSubmit}
+            isSubmitting={isSubmitting}
           />
         </TabsContent>
       </Tabs>
@@ -121,10 +192,11 @@ export default function AddTransactionPage() {
 
 interface TransactionFormProps {
   type: string;
-  categories: string[];
+  categories: Category[];
   formData: any;
   setFormData: (data: any) => void;
   onSubmit: (e: React.FormEvent) => void;
+  isSubmitting: boolean;
 }
 
 function TransactionForm({
@@ -133,6 +205,7 @@ function TransactionForm({
   formData,
   setFormData,
   onSubmit,
+  isSubmitting,
 }: TransactionFormProps) {
   return (
     <form
@@ -144,7 +217,7 @@ function TransactionForm({
         <CardContent className="pt-4 sm:pt-6">
           <div className="text-center">
             <p className="text-sm sm:text-base font-bold mb-1">Cash</p>
-            <p className="text-base sm:text-lg font-semibold">Rp 800.000</p>
+            <p className="text-base sm:text-lg font-semibold">Rp 0</p>
           </div>
         </CardContent>
       </Card>
@@ -152,21 +225,21 @@ function TransactionForm({
       {/* Amount Input */}
       <div className="space-y-3">
         <p className="text-4xl sm:text-5xl lg:text-6xl font-light text-gray-400 text-center">
-          Rp{" "}
-          {formData.amount
-            ? Number(formData.amount).toLocaleString("id-ID")
-            : "0"}
+          Rp {formData.amount ? formatRupiah(formData.amount) : "0"}
         </p>
 
         {/* Amount input — sekarang seragam dengan input lain */}
         <Input
           id="amount"
-          type="number"
+          type="text"
           inputMode="numeric"
           placeholder="0"
           value={formData.amount}
-          onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
+          onChange={(e) =>
+            setFormData({ ...formData, amount: formatRupiah(e.target.value) })
+          }
           className="w-full bg-gray-200 border-none h-12 sm:h-14 text-sm sm:text-base rounded-xl px-4 py-0 text-center"
+          required
         />
       </div>
 
@@ -188,14 +261,15 @@ function TransactionForm({
             onValueChange={(value) =>
               setFormData({ ...formData, category: value })
             }
+            required
           >
             <SelectTrigger className="w-full bg-gray-200 border-none h-12 sm:h-14 text-sm sm:text-base rounded-xl px-4 py-0">
               <SelectValue placeholder="Kategori" />
             </SelectTrigger>
             <SelectContent className="w-full">
               {categories.map((category) => (
-                <SelectItem key={category} value={category}>
-                  {category}
+                <SelectItem key={category.id} value={category.id}>
+                  {category.name}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -209,6 +283,7 @@ function TransactionForm({
             value={formData.date}
             onChange={(e) => setFormData({ ...formData, date: e.target.value })}
             className="w-full bg-gray-200 border-none h-12 sm:h-14 text-sm sm:text-base rounded-xl px-4 py-0 appearance-none"
+            required
           />
 
           <Input
@@ -224,13 +299,14 @@ function TransactionForm({
       {/* Submit Button */}
       <Button
         type="submit"
+        disabled={isSubmitting}
         className={`w-full h-12 sm:h-14 text-base sm:text-lg font-semibold rounded-xl ${
           type === "pemasukkan"
             ? "bg-green-600 hover:bg-green-700"
             : "bg-red-500 hover:bg-red-600"
-        }`}
+        } disabled:opacity-50`}
       >
-        Catat
+        {isSubmitting ? "Menyimpan..." : "Catat"}
       </Button>
     </form>
   );

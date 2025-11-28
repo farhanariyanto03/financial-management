@@ -1,5 +1,6 @@
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { NextResponse } from "next/server";
+import { supabase } from "@/lib/supabaseClient";
 
 export async function POST(req: Request) {
   const body = await req.json();
@@ -33,15 +34,10 @@ export async function POST(req: Request) {
   const profile = profiles[0];
 
   // Login supabase
-  const { data, error: loginError } =
-    await supabaseAdmin.auth.signInWithPassword({
-      email: profile.email,
-      password,
-    });
-
-  if (loginError) {
-    return NextResponse.json({ error: "Password salah" }, { status: 401 });
-  }
+  const { data, error: loginError } = await supabase.auth.signInWithPassword({
+    email: profile.email,
+    password,
+  });
 
   // Set cookie & response
   const response = NextResponse.json({

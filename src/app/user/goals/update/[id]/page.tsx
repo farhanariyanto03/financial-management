@@ -74,6 +74,9 @@ export default function UpdateGoalPage() {
         }
 
         if (data.goal) {
+          // console.log("Raw goal data:", data.goal);
+          // console.log("Goal items:", data.goal.items);
+
           setFormData({
             destination: data.goal.destination,
             timeFrom: data.goal.start_date,
@@ -98,13 +101,17 @@ export default function UpdateGoalPage() {
               amount: formattedAmount,
             };
 
+            // Safe access: goal_item_categories bisa null
+            const categoryName = item.goal_item_categories?.name ?? "Other";
+            // console.log(`Item: ${item.item_name}, Category: ${categoryName}`);
+
             if (item.item_name === "Emergency pocket") {
-              emergency = item.cost_idr.toString();
-            } else if (item.goal_item_categories.name === "Transportation") {
+              emergency = item.cost_idr != null ? String(item.cost_idr) : "";
+            } else if (categoryName === "Transportation") {
               trans.push(budgetItem);
-            } else if (item.goal_item_categories.name === "Accommodations") {
+            } else if (categoryName === "Accommodations") {
               accom.push(budgetItem);
-            } else if (item.goal_item_categories.name === "Activities") {
+            } else if (categoryName === "Activities") {
               act.push(budgetItem);
             } else {
               misc.push(budgetItem);
