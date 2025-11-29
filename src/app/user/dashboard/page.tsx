@@ -33,15 +33,20 @@ import { Input } from "@/components/ui/input";
 import { supabase } from "@/lib/supabaseClient";
 import { getAuthUser } from "@/lib/utils";
 import { showToastSuccess } from "@/components/ui/alertToast";
-import { group } from "console";
 
-// Sample data for expense chart
-const expenseData = [
-  { name: "Makanan", value: 3000000, fill: "#3b82f6" },
-  { name: "Hiburan", value: 1500000, fill: "#06d6a0" },
-  { name: "Belanja", value: 2000000, fill: "#f72585" },
-  { name: "Lainnya", value: 500000, fill: "#ffd60a" },
-];
+// Category color mapping
+const categoryColors: { [key: string]: string } = {
+  "Makanan & Minuman": "#E63946", // merah tegas
+  Belanja: "#1D3557", // biru gelap kuat
+  Rumah: "#2A9D8F", // hijau kebiruan pekat
+  Kendaraan: "#F4A261", // oranye hangat
+  Hiburan: "#E9C46A", // kuning keemasan
+  Keuangan: "#6A4C93", // ungu gelap
+  Komunikasi: "#118AB2", // biru terang
+  Investasi: "#06D6A0", // hijau mint neon
+  Pemasukkan: "#EF476F", // pink kemerahan tegas
+  Lainnya: "#8D99AE", // abu-abu kebiruan netral
+};
 
 // Sample recent transactions
 const recentTransactions = [
@@ -85,23 +90,6 @@ const monthlyData = [
   { month: "Jun", pemasukkan: 6000000, pengeluaran: 4500000 },
 ];
 
-// Sample data for income pie chart
-const pemasukanData = [
-  { name: "Gaji", value: 4000000, fill: "#0088FE" },
-  { name: "Freelance", value: 1500000, fill: "#00C49F" },
-  { name: "Investasi", value: 800000, fill: "#FFBB28" },
-  { name: "Lainnya", value: 200000, fill: "#FF8042" },
-];
-
-// Sample data for expense pie chart
-const pengeluaranData = [
-  { name: "Makanan", value: 1500000, fill: "#FF6B6B" },
-  { name: "Transportasi", value: 800000, fill: "#4ECDC4" },
-  { name: "Tagihan", value: 1200000, fill: "#45B7D1" },
-  { name: "Hiburan", value: 500000, fill: "#96CEB4" },
-  { name: "Lainnya", value: 500000, fill: "#FECA57" },
-];
-
 const chartConfig = {
   pemasukkan: {
     label: "Pemasukkan",
@@ -124,6 +112,12 @@ export default function DashboardPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [userId, setUserId] = useState<string | null>(null);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [realIncomeData, setRealIncomeData] = useState<
+    Array<{ name: string; value: number; fill: string }>
+  >([]);
+  const [realExpenseData, setRealExpenseData] = useState<
+    Array<{ name: string; value: number; fill: string }>
+  >([]);
   const router = useRouter();
 
   const [goal, setGoal] = useState<{
@@ -137,12 +131,11 @@ export default function DashboardPage() {
   } | null>(null);
 
   const progress = goal ? (goal.current_amount / goal.total_budget) * 100 : 0;
-  const totalExpense = expenseData.reduce((sum, item) => sum + item.value, 0);
-  const totalExpenseData = pengeluaranData.reduce(
+  const totalExpenseData = realExpenseData.reduce(
     (sum, item) => sum + item.value,
     0
   );
-  const totalIncomeData = pemasukanData.reduce(
+  const totalIncomeData = realIncomeData.reduce(
     (sum, item) => sum + item.value,
     0
   );
@@ -299,6 +292,118 @@ export default function DashboardPage() {
     };
     checkAuth();
   }, [router]);
+
+  // Fetch transaction data for charts
+  useEffect(() => {
+    const fetchTransactionStats = async () => {
+      if (!userId) return;
+
+      try {
+        const currentDate = new Date();
+        const currentMonth = currentDate.getMonth() + 1;
+        const currentYear = currentDate.getFullYear();
+
+        console.log(
+          `Fetching data for: ${currentYear}-${currentMonth
+            .toString()
+            .padStart(2, "0")}`
+        );
+
+        const response = await fetch("/api/transaction?type=dashboard");
+        const data = await response.json();
+
+        if (response.ok) {
+          console.log("API Response for current month:", data);
+
+          // Convert income data
+          const incomeChartData = Object.entries(
+            data.incomeByCategory || {}
+          ).map(([category, amount], index) => {
+            // Try exact match first, then fallback to index-based colors
+            let color = categoryColors[category];
+            if (!color) {
+              // Generate colors based on index if category not found
+              const colors = [
+                "#0088FE",
+                "#00C49F",
+                "#FFBB28",
+                "#FF8042",
+                "#8884D8",
+                "#82CA9D",
+              ];
+              color = colors[index % colors.length];
+            }
+
+            console.log(
+              `Income category: ${category}, amount: ${amount}, color: ${color}`
+            );
+
+            return {
+              name: category,
+              value: amount as number,
+              fill: color,
+            };
+          });
+
+          // Convert expense data
+          const expenseChartData = Object.entries(
+            data.expenseByCategory || {}
+          ).map(([category, amount], index) => {
+            // Try exact match first, then fallback to index-based colors
+            let color = categoryColors[category];
+            if (!color) {
+              // Generate colors based on index if category not found
+              const colors = [
+                "#E63946",
+                "#1D3557",
+                "#2A9D8F",
+                "#F4A261",
+                "#E9C46A",
+                "#6A4C93",
+              ];
+              color = colors[index % colors.length];
+            }
+
+            console.log(
+              `Expense category: ${category}, amount: ${amount}, color: ${color}`
+            );
+
+            return {
+              name: category,
+              value: amount as number,
+              fill: color,
+            };
+          });
+
+          setRealIncomeData(incomeChartData);
+          setRealExpenseData(expenseChartData);
+
+          console.log("Charts updated with current month data");
+        } else {
+          console.error("Failed to fetch transaction stats:", data.error);
+        }
+      } catch (error) {
+        console.error("Error fetching transaction stats:", error);
+      }
+    };
+
+    fetchTransactionStats();
+
+    // Set up interval to refresh data when month changes
+    const checkMonthChange = setInterval(() => {
+      const now = new Date();
+      const currentHour = now.getHours();
+      const currentMinute = now.getMinutes();
+
+      // Refresh data at the beginning of each month (1st day, 00:00)
+      if (now.getDate() === 1 && currentHour === 0 && currentMinute === 0) {
+        console.log("Month changed, refreshing chart data...");
+        fetchTransactionStats();
+      }
+    }, 60000); // Check every minute
+
+    return () => clearInterval(checkMonthChange);
+  }, [userId]);
 
   // Format date
   const formatDate = (dateString: string) => {
@@ -544,12 +649,18 @@ export default function DashboardPage() {
         <Card className="shadow-lg">
           <CardHeader>
             <CardTitle className="text-lg">Grafik Pemasukkan</CardTitle>
+            <div className="text-xs text-gray-500">
+              {new Date().toLocaleDateString("id-ID", {
+                month: "long",
+                year: "numeric",
+              })}
+            </div>
           </CardHeader>
           <CardContent>
             <div className="flex items-center justify-between mb-4">
               <div className="flex flex-col">
                 <span className="text-sm font-medium text-gray-700">
-                  Minggu ini
+                  Bulan ini
                 </span>
                 <span className="text-2xl font-bold text-black">
                   Rp {totalIncomeData.toLocaleString("id-ID")}
@@ -573,44 +684,62 @@ export default function DashboardPage() {
             {/* Chart + Legend side-by-side */}
             <div className="flex items-center gap-6">
               <div className="w-2/3 h-[300px]">
-                <ChartContainer config={chartConfig} className="h-full w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={pemasukanData}
-                        cx="50%"
-                        cy="50%"
-                        outerRadius={80}
-                        innerRadius={40}
-                        paddingAngle={5}
-                        dataKey="value"
-                      >
-                        {pemasukanData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={entry.fill} />
-                        ))}
-                      </Pie>
-                      <ChartTooltip
-                        content={<ChartTooltipContent />}
-                        formatter={(value: number) => [
-                          `Rp ${value.toLocaleString("id-ID")}`,
-                          "Jumlah",
-                        ]}
-                      />
-                    </PieChart>
-                  </ResponsiveContainer>
-                </ChartContainer>
+                {realIncomeData.length > 0 ? (
+                  <ChartContainer
+                    config={chartConfig}
+                    className="h-full w-full"
+                  >
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={realIncomeData}
+                          cx="50%"
+                          cy="50%"
+                          outerRadius={80}
+                          innerRadius={40}
+                          paddingAngle={5}
+                          dataKey="value"
+                        >
+                          {realIncomeData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.fill} />
+                          ))}
+                        </Pie>
+                        <ChartTooltip
+                          content={<ChartTooltipContent />}
+                          formatter={(value: number) => [
+                            `Rp ${value.toLocaleString("id-ID")}`,
+                            "Jumlah",
+                          ]}
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </ChartContainer>
+                ) : (
+                  <div className="flex items-center justify-center h-full text-gray-500">
+                    <div className="text-center">
+                      <div className="text-4xl mb-2">📊</div>
+                      <div className="text-sm">Tidak ada data</div>
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="w-1/3 h-[300px] flex flex-col justify-center items-start space-y-2">
-                {pemasukanData.map((item, index) => (
-                  <div key={index} className="flex items-center gap-2">
-                    <div
-                      className="w-2 h-2 rounded-full"
-                      style={{ backgroundColor: item.fill }}
-                    />
-                    <span className="text-xs text-gray-600">{item.name}</span>
+                {realIncomeData.length > 0 ? (
+                  realIncomeData.map((item, index) => (
+                    <div key={index} className="flex items-center gap-2">
+                      <div
+                        className="w-2 h-2 rounded-full"
+                        style={{ backgroundColor: item.fill }}
+                      />
+                      <span className="text-xs text-gray-600">{item.name}</span>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-xs text-gray-500 text-center w-full">
+                    Tidak ada data pemasukkan
                   </div>
-                ))}
+                )}
               </div>
             </div>
           </CardContent>
@@ -620,12 +749,18 @@ export default function DashboardPage() {
         <Card className="shadow-lg">
           <CardHeader>
             <CardTitle className="text-lg">Grafik Pengeluaran</CardTitle>
+            <div className="text-xs text-gray-500">
+              {new Date().toLocaleDateString("id-ID", {
+                month: "long",
+                year: "numeric",
+              })}
+            </div>
           </CardHeader>
           <CardContent>
             <div className="flex items-center justify-between mb-4">
               <div className="flex flex-col">
                 <span className="text-sm font-medium text-gray-700">
-                  Minggu ini
+                  Bulan ini
                 </span>
                 <span className="text-2xl font-bold text-black">
                   Rp {totalExpenseData.toLocaleString("id-ID")}
@@ -651,44 +786,62 @@ export default function DashboardPage() {
             {/* Chart + Legend side-by-side */}
             <div className="flex items-center gap-6">
               <div className="w-2/3 h-[300px]">
-                <ChartContainer config={chartConfig} className="h-full w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={pengeluaranData}
-                        cx="50%"
-                        cy="50%"
-                        outerRadius={80}
-                        innerRadius={40}
-                        paddingAngle={5}
-                        dataKey="value"
-                      >
-                        {pengeluaranData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={entry.fill} />
-                        ))}
-                      </Pie>
-                      <ChartTooltip
-                        content={<ChartTooltipContent />}
-                        formatter={(value: number) => [
-                          `Rp ${value.toLocaleString("id-ID")}`,
-                          "Jumlah",
-                        ]}
-                      />
-                    </PieChart>
-                  </ResponsiveContainer>
-                </ChartContainer>
+                {realExpenseData.length > 0 ? (
+                  <ChartContainer
+                    config={chartConfig}
+                    className="h-full w-full"
+                  >
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={realExpenseData}
+                          cx="50%"
+                          cy="50%"
+                          outerRadius={80}
+                          innerRadius={40}
+                          paddingAngle={5}
+                          dataKey="value"
+                        >
+                          {realExpenseData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.fill} />
+                          ))}
+                        </Pie>
+                        <ChartTooltip
+                          content={<ChartTooltipContent />}
+                          formatter={(value: number) => [
+                            `Rp ${value.toLocaleString("id-ID")}`,
+                            "Jumlah",
+                          ]}
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </ChartContainer>
+                ) : (
+                  <div className="flex items-center justify-center h-full text-gray-500">
+                    <div className="text-center">
+                      <div className="text-4xl mb-2">📊</div>
+                      <div className="text-sm">Tidak ada data</div>
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="w-1/3 h-[300px] flex flex-col justify-center items-start space-y-2">
-                {pengeluaranData.map((item, index) => (
-                  <div key={index} className="flex items-center gap-2">
-                    <div
-                      className="w-2 h-2 rounded-full"
-                      style={{ backgroundColor: item.fill }}
-                    />
-                    <span className="text-xs text-gray-600">{item.name}</span>
+                {realExpenseData.length > 0 ? (
+                  realExpenseData.map((item, index) => (
+                    <div key={index} className="flex items-center gap-2">
+                      <div
+                        className="w-2 h-2 rounded-full"
+                        style={{ backgroundColor: item.fill }}
+                      />
+                      <span className="text-xs text-gray-600">{item.name}</span>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-xs text-gray-500 text-center w-full">
+                    Tidak ada data pengeluaran
                   </div>
-                ))}
+                )}
               </div>
             </div>
           </CardContent>
