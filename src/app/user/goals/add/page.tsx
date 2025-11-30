@@ -229,7 +229,7 @@ export default function AddGoalPage() {
     <div className="min-h-screen bg-gray-50 p-6 pb-20">
       {/* Header */}
       <div className="flex items-center justify-center gap-4 mb-6 relative">
-        <Link href="/user/goals" className="absolute left-0">
+        <Link href="/user/dashboard" className="absolute left-0">
           <Button
             variant="ghost"
             size="icon"

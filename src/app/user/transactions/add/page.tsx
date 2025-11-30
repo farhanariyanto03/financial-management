@@ -45,8 +45,7 @@ export default function AddTransactionPage() {
     amount: "",
     category: "",
     note: "",
-    date: new Date().toISOString().split("T")[0],
-    time: new Date().toTimeString().split(" ")[0].slice(0, 5),
+    datetime: new Date().toISOString().slice(0, 16), // Format: YYYY-MM-DDTHH:mm
   });
 
   // Fetch categories from API
@@ -93,7 +92,7 @@ export default function AddTransactionPage() {
           amount: parseAmount(formData.amount),
           note: formData.note,
           category_id: formData.category,
-          date_transaction: formData.date,
+          date_transaction: formData.datetime, // Send full datetime
         }),
       });
 
@@ -276,22 +275,16 @@ function TransactionForm({
           </Select>
         </div>
 
-        <div className="grid grid-cols-2 gap-3 sm:gap-4">
+        <div>
           <Input
-            id="date"
-            type="date"
-            value={formData.date}
-            onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+            id="datetime"
+            type="datetime-local"
+            value={formData.datetime}
+            onChange={(e) =>
+              setFormData({ ...formData, datetime: e.target.value })
+            }
             className="w-full bg-gray-200 border-none h-12 sm:h-14 text-sm sm:text-base rounded-xl px-4 py-0 appearance-none"
             required
-          />
-
-          <Input
-            id="time"
-            type="time"
-            value={formData.time}
-            onChange={(e) => setFormData({ ...formData, time: e.target.value })}
-            className="w-full bg-gray-200 border-none h-12 sm:h-14 text-sm sm:text-base rounded-xl px-4 py-0 appearance-none"
           />
         </div>
       </div>

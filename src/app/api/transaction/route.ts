@@ -41,6 +41,11 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    // Handle datetime properly - treat input as local time
+    // datetime-local gives us "YYYY-MM-DDTHH:mm" format
+    // We need to preserve this as local time, not convert to UTC
+    const transactionDateTime = date_transaction;
+
     const { data, error } = await supabaseAdmin
       .from("transactions")
       .insert({
@@ -49,7 +54,7 @@ export async function POST(req: Request) {
         amount,
         note: note || null,
         category_id,
-        date_transaction,
+        date_transaction: transactionDateTime, // Store as provided (local time)
       })
       .select()
       .single();
@@ -107,7 +112,9 @@ export async function GET(req: Request) {
           .padStart(2, "0")}-01`;
         const nextMonth = targetMonth === 12 ? 1 : targetMonth + 1;
         const nextYear = targetMonth === 12 ? targetYear + 1 : targetYear;
-        const endDate = `${nextYear}-${nextMonth.toString().padStart(2, "0")}-01`;
+        const endDate = `${nextYear}-${nextMonth
+          .toString()
+          .padStart(2, "0")}-01`;
 
         const { data: monthTransactions } = await supabaseAdmin
           .from("transactions")

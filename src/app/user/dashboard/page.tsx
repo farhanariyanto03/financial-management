@@ -517,18 +517,40 @@ export default function DashboardPage() {
   const getTimeAgo = (dateString: string) => {
     const now = new Date();
     const transactionDate = new Date(dateString);
+
+    // Check if the date is valid
+    if (isNaN(transactionDate.getTime())) {
+      return "Waktu tidak valid";
+    }
+
     const diffInMilliseconds = now.getTime() - transactionDate.getTime();
+    const diffInMinutes = Math.floor(diffInMilliseconds / (1000 * 60));
     const diffInHours = Math.floor(diffInMilliseconds / (1000 * 60 * 60));
     const diffInDays = Math.floor(diffInHours / 24);
 
-    if (diffInHours < 1) {
+    if (diffInMinutes < 1) {
       return "Baru saja";
+    } else if (diffInMinutes < 60) {
+      return `${diffInMinutes} menit yang lalu`;
     } else if (diffInHours < 24) {
       return `${diffInHours} jam yang lalu`;
     } else if (diffInDays === 1) {
       return "1 hari yang lalu";
-    } else {
+    } else if (diffInDays < 7) {
       return `${diffInDays} hari yang lalu`;
+    } else {
+      const diffInWeeks = Math.floor(diffInDays / 7);
+      if (diffInWeeks === 1) {
+        return "1 minggu yang lalu";
+      } else if (diffInWeeks < 4) {
+        return `${diffInWeeks} minggu yang lalu`;
+      } else {
+        return transactionDate.toLocaleDateString("id-ID", {
+          day: "numeric",
+          month: "short",
+          year: "numeric",
+        });
+      }
     }
   };
 
