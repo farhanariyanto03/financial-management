@@ -41,33 +41,88 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Handle datetime properly - treat input as local time
-    // datetime-local gives us "YYYY-MM-DDTHH:mm" format
-    // We need to preserve this as local time, not convert to UTC
-    const transactionDateTime = date_transaction;
-
-    const { data, error } = await supabaseAdmin
-      .from("transactions")
-      .insert({
-        user_id: user.id,
-        type: type === "pemasukkan" ? "income" : "expense",
-        amount,
-        note: note || null,
-        category_id,
-        date_transaction: transactionDateTime, // Store as provided (local time)
-      })
-      .select()
+    // Get current user profile to check balance
+    const { data: profile, error: profileError } = await supabaseAdmin
+      .from("profiles")
+      .select("initial_balance, kas")
+      .eq("id", user.id)
       .single();
 
-    if (error) {
-      console.error(error);
+    if (profileError) {
+      return NextResponse.json(
+        { error: "Failed to fetch user profile" },
+        { status: 500 }
+      );
+    }
+
+    // Gunakan initial_balance sebagai saldo saat ini
+    const currentBalance = Number(profile.initial_balance);
+
+    // Validate balance for expenses
+    if (type === "pengeluaran" && amount > currentBalance) {
+      return NextResponse.json(
+        { error: "Insufficient balance" },
+        { status: 400 }
+      );
+    }
+
+    // Calculate new balance
+    const newBalance =
+      type === "pengeluaran"
+        ? currentBalance - amount
+        : currentBalance + amount;
+
+    // Start transaction
+    const transactionDateTime = date_transaction;
+
+    // Insert transaction and update balance
+    const { data: transactionData, error: transactionError } =
+      await supabaseAdmin
+        .from("transactions")
+        .insert({
+          user_id: user.id,
+          type: type === "pemasukkan" ? "income" : "expense",
+          amount,
+          note: note || null,
+          category_id,
+          date_transaction: transactionDateTime,
+        })
+        .select()
+        .single();
+
+    if (transactionError) {
+      console.error(transactionError);
       return NextResponse.json(
         { error: "Failed to create transaction" },
         { status: 500 }
       );
     }
 
-    return NextResponse.json({ success: true, transaction: data });
+    // Update initial_balance instead of kas
+    const { error: updateError } = await supabaseAdmin
+      .from("profiles")
+      .update({ initial_balance: newBalance })
+      .eq("id", user.id);
+
+    if (updateError) {
+      console.error("Failed to update balance:", updateError);
+      // Optionally rollback transaction here
+      await supabaseAdmin
+        .from("transactions")
+        .delete()
+        .eq("id", transactionData.id);
+
+      return NextResponse.json(
+        { error: "Failed to update balance" },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json({
+      success: true,
+      transaction: transactionData,
+      newBalance: newBalance,
+    });
   } catch (error) {
     return NextResponse.json(
       { error: "Internal server error" },

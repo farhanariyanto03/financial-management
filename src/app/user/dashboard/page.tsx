@@ -23,16 +23,10 @@ import {
 } from "@/components/ui/chart";
 import { Button } from "@/components/ui/button";
 import { Plus, ArrowUp, ArrowDown, ChevronDown, LogOut } from "lucide-react";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
 import { supabase } from "@/lib/supabaseClient";
 import { getAuthUser } from "@/lib/utils";
-import { showToastSuccess } from "@/components/ui/alertToast";
+import ModalAddTransaction from "./modalAddTransaction/page";
+import ModalAddTabungan from "./modalAddTabungan/page";
 
 // Category color mapping
 const categoryColors: { [key: string]: string } = {
@@ -187,57 +181,6 @@ export default function DashboardPage() {
   const isSavingMore = savingsChange > 0; // having more remaining money is good
   const savingsChangeFormatted =
     Math.abs(savingsChange).toLocaleString("id-ID");
-
-  const handleAddSavings = async () => {
-    if (!addAmount || !goal) return;
-
-    try {
-      const response = await fetch("/api/goal/savings", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          goal_id: goal.id,
-          amount: parseAmount(addAmount),
-        }),
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        // Recalculate minWeekly dengan current_amount yang baru
-        const targetDate = new Date(goal.end_date);
-        const today = new Date();
-        const daysRemaining = Math.ceil(
-          (targetDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
-        );
-        const weeksRemaining = Math.ceil(daysRemaining / 7);
-        const remainingAmount = goal.total_budget - data.totalSavings;
-        const newMinWeekly =
-          weeksRemaining > 0 ? Math.ceil(remainingAmount / weeksRemaining) : 0;
-
-        // Update local state dengan minWeekly yang baru
-        setGoal((prev) =>
-          prev
-            ? {
-                ...prev,
-                current_amount: data.totalSavings,
-                minWeekly: newMinWeekly,
-              }
-            : null
-        );
-        setAddAmount("");
-        setShowAddAmountModal(false);
-        showToastSuccess("Berhasil menambahkan tabungan");
-      } else {
-        alert(`Error: ${data.error}`);
-      }
-    } catch (error) {
-      console.error("Error adding savings:", error);
-      alert("Gagal menambahkan tabungan");
-    }
-  };
 
   // Logout function
   const handleLogout = async () => {
@@ -570,12 +513,6 @@ export default function DashboardPage() {
     return digits ? new Intl.NumberFormat("id-ID").format(Number(digits)) : "";
   };
 
-  // helper: parse string berformat rupiah -> number (mis. "1.000.000" -> 1000000)
-  const parseAmount = (value: string) => {
-    const digits = String(value || "").replace(/\D/g, "");
-    return digits ? Number(digits) : 0;
-  };
-
   // Fetch monthly data for cash flow chart
   useEffect(() => {
     const fetchMonthlyData = async () => {
@@ -608,42 +545,10 @@ export default function DashboardPage() {
     fetchMonthlyData();
   }, [userId]);
 
-  // Add new state for user account data
-  const [userAccount, setUserAccount] = useState<{
-    name: string;
-    balance: number;
-  }>({
-    name: "Cash",
-    balance: 0,
-  });
-
-  // Add function to fetch user profile
-  const fetchUserProfile = async () => {
-    if (!userId) return;
-
-    try {
-      const response = await fetch("/api/user/profile");
-      const data = await response.json();
-
-      if (response.ok) {
-        setUserAccount({
-          name: data.kas,
-          balance: data.initial_balance,
-        });
-      } else {
-        console.error("Failed to fetch user profile:", data.error);
-      }
-    } catch (error) {
-      console.error("Error fetching user profile:", error);
-    }
+  // Add function to handle goal updates from modal
+  const handleGoalUpdate = (updatedGoal: typeof goal) => {
+    setGoal(updatedGoal);
   };
-
-  // Add useEffect to fetch user profile
-  useEffect(() => {
-    if (userId) {
-      fetchUserProfile();
-    }
-  }, [userId]);
 
   if (isLoading) {
     return (
@@ -1314,93 +1219,20 @@ export default function DashboardPage() {
         <Plus className="w-6 h-6" />
       </Button>
 
-      {/* Add Menu Modal */}
-      <Dialog open={showAddMenu} onOpenChange={setShowAddMenu}>
-        <DialogContent className="max-w-xs mx-auto">
-          <div className="p-4 space-y-3">
-            {/* top card with account name + amount (now using real data) */}
-            <div className="bg-gray-200 rounded-lg p-4 text-center">
-              <div className="text-lg font-bold">{userAccount.name}</div>
-              <div className="text-xl font-semibold mt-2">
-                Rp {userAccount.balance.toLocaleString("id-ID")}
-              </div>
-            </div>
-
-            {/* small pager dots */}
-            <div className="flex justify-center mt-2">
-              <div className="w-6 h-2 rounded-full bg-green-600" />
-              <div className="w-2 h-2 rounded-full bg-gray-300 ml-2" />
-              <div className="w-2 h-2 rounded-full bg-gray-300 ml-2" />
-            </div>
-
-            {/* action buttons */}
-            <div className="flex flex-col gap-3 mt-3">
-              <Button
-                className="w-full h-12 bg-gray-300 hover:bg-gray-300 text-white rounded-lg"
-                onClick={() => {
-                  setShowAddMenu(false);
-                  // router.push('/user/transactions/upload'); // optional
-                }}
-              >
-                Upload
-              </Button>
-
-              <Button
-                className="w-full h-12 bg-gray-400 hover:bg-gray-400 text-white rounded-lg"
-                onClick={() => {
-                  setShowAddMenu(false);
-                  router.push("/user/transactions/add");
-                }}
-              >
-                Manual
-              </Button>
-
-              <Button
-                className="w-full h-12 bg-green-600 hover:bg-green-700 text-white rounded-lg"
-                onClick={() => {
-                  setShowAddMenu(false);
-                  // router.push('/user/transactions/photo');
-                }}
-              >
-                Foto
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+      {/* Add Transaction Menu Modal */}
+      <ModalAddTransaction
+        isOpen={showAddMenu}
+        onClose={() => setShowAddMenu(false)}
+      />
 
       {/* Add Amount Modal - Only show if hasGoal */}
       {hasGoal && goal && (
-        <Dialog open={showAddAmountModal} onOpenChange={setShowAddAmountModal}>
-          <DialogContent className="max-w-sm mx-auto top-[15%] translate-y-0">
-            <DialogHeader>
-              <DialogTitle className="text-center text-xl font-bold">
-                Tambah Tabungan
-              </DialogTitle>
-            </DialogHeader>
-            <div className="space-y-6 p-4">
-              <div className="text-center">
-                <div className="text-5xl font-light text-gray-400 mb-6">
-                  Rp {addAmount ? formatRupiah(addAmount) : "0"}
-                </div>
-                <Input
-                  type="text"
-                  placeholder="Masukkan jumlah..."
-                  value={addAmount}
-                  onChange={(e) => setAddAmount(formatRupiah(e.target.value))}
-                  className="text-center text-xl border-2 border-gray-200 bg-white h-14 rounded-xl"
-                />
-              </div>
-              <Button
-                onClick={handleAddSavings}
-                className="w-full bg-green-500 hover:bg-green-600 text-white rounded-xl h-12 font-semibold text-base"
-                disabled={!addAmount || parseAmount(addAmount) <= 0}
-              >
-                Tetapkan
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
+        <ModalAddTabungan
+          isOpen={showAddAmountModal}
+          onClose={() => setShowAddAmountModal(false)}
+          goal={goal}
+          onGoalUpdate={handleGoalUpdate}
+        />
       )}
     </div>
   );

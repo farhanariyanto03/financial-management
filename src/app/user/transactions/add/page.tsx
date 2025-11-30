@@ -34,10 +34,19 @@ interface Category {
   name: string;
 }
 
+interface UserProfile {
+  id: string;
+  username: string;
+  initial_balance: number;
+  kas: number;
+  account_name: string;
+}
+
 export default function AddTransactionPage() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState("pemasukkan");
   const [categories, setCategories] = useState<Category[]>([]);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -48,27 +57,49 @@ export default function AddTransactionPage() {
     datetime: new Date().toISOString().slice(0, 16), // Format: YYYY-MM-DDTHH:mm
   });
 
-  // Fetch categories from API
-  useEffect(() => {
-    const fetchCategories = async () => {
-      try {
-        const response = await fetch("/api/categories");
-        const data = await response.json();
+  // Fetch user profile
+  const fetchUserProfile = async () => {
+    try {
+      const response = await fetch("/api/profile");
+      const data = await response.json();
 
-        if (response.ok) {
-          setCategories(data.categories || []);
-        } else {
-          showToastError("Failed to load categories");
-        }
+      if (response.ok) {
+        setUserProfile(data);
+      } else {
+        showToastError("Failed to load user profile");
+      }
+    } catch (error) {
+      console.error("Error fetching user profile:", error);
+      showToastError("Failed to load user profile");
+    }
+  };
+
+  // Fetch categories and user profile
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        // Fetch categories and profile in parallel
+        await Promise.all([
+          (async () => {
+            const response = await fetch("/api/categories");
+            const data = await response.json();
+            if (response.ok) {
+              setCategories(data.categories || []);
+            } else {
+              showToastError("Failed to load categories");
+            }
+          })(),
+          fetchUserProfile(),
+        ]);
       } catch (error) {
-        console.error("Error fetching categories:", error);
-        showToastError("Failed to load categories");
+        console.error("Error fetching data:", error);
+        showToastError("Failed to load data");
       } finally {
         setIsLoading(false);
       }
     };
 
-    fetchCategories();
+    fetchData();
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -76,6 +107,23 @@ export default function AddTransactionPage() {
 
     if (!formData.amount || !formData.category) {
       showToastError("Mohon isi semua field yang wajib");
+      return;
+    }
+
+    const transactionAmount = parseAmount(formData.amount);
+    // Always use kas for current balance, fallback to initial_balance only if kas is null/undefined
+    const currentBalance =
+      userProfile?.kas !== null && userProfile?.kas !== undefined
+        ? userProfile.kas
+        : userProfile?.initial_balance || 0;
+
+    // Validate balance for expenses
+    if (activeTab === "pengeluaran" && transactionAmount > currentBalance) {
+      showToastError(
+        `Saldo tidak mencukupi. Saldo tersedia: Rp ${currentBalance.toLocaleString(
+          "id-ID"
+        )}`
+      );
       return;
     }
 
@@ -89,10 +137,10 @@ export default function AddTransactionPage() {
         },
         body: JSON.stringify({
           type: activeTab,
-          amount: parseAmount(formData.amount),
+          amount: transactionAmount,
           note: formData.note,
           category_id: formData.category,
-          date_transaction: formData.datetime, // Send full datetime
+          date_transaction: formData.datetime,
         }),
       });
 
@@ -100,6 +148,17 @@ export default function AddTransactionPage() {
 
       if (response.ok) {
         showToastSuccess("Transaksi berhasil dicatat!");
+        // Update initial_balance field (seperti yang Anda inginkan)
+        if (userProfile) {
+          const newBalance =
+            activeTab === "pengeluaran"
+              ? currentBalance - transactionAmount
+              : currentBalance + transactionAmount;
+          setUserProfile({
+            ...userProfile,
+            initial_balance: newBalance, // Update initial_balance
+          });
+        }
         router.push("/user/dashboard");
       } else if (response.status === 401) {
         showToastError("Sesi telah berakhir, silakan login kembali");
@@ -112,6 +171,24 @@ export default function AddTransactionPage() {
       showToastError("Terjadi kesalahan saat mencatat transaksi");
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  // Calculate preview balance
+  const getPreviewBalance = () => {
+    // Gunakan initial_balance sebagai saldo saat ini
+    const currentBalance = userProfile?.initial_balance || 0;
+
+    if (!userProfile || !formData.amount) {
+      return currentBalance;
+    }
+
+    const transactionAmount = parseAmount(formData.amount);
+
+    if (activeTab === "pengeluaran") {
+      return currentBalance - transactionAmount;
+    } else {
+      return currentBalance + transactionAmount;
     }
   };
 
@@ -171,6 +248,8 @@ export default function AddTransactionPage() {
             setFormData={setFormData}
             onSubmit={handleSubmit}
             isSubmitting={isSubmitting}
+            userProfile={userProfile}
+            previewBalance={getPreviewBalance()}
           />
         </TabsContent>
 
@@ -182,6 +261,8 @@ export default function AddTransactionPage() {
             setFormData={setFormData}
             onSubmit={handleSubmit}
             isSubmitting={isSubmitting}
+            userProfile={userProfile}
+            previewBalance={getPreviewBalance()}
           />
         </TabsContent>
       </Tabs>
@@ -196,6 +277,8 @@ interface TransactionFormProps {
   setFormData: (data: any) => void;
   onSubmit: (e: React.FormEvent) => void;
   isSubmitting: boolean;
+  userProfile: UserProfile | null;
+  previewBalance: number;
 }
 
 function TransactionForm({
@@ -205,7 +288,25 @@ function TransactionForm({
   setFormData,
   onSubmit,
   isSubmitting,
+  userProfile,
+  previewBalance,
 }: TransactionFormProps) {
+  // Gunakan initial_balance sebagai saldo yang ditampilkan
+  const currentBalance = userProfile?.initial_balance || 0;
+  const transactionAmount = parseAmount(formData.amount);
+  const accountName = userProfile?.account_name || "Cash";
+
+  console.log(
+    "Displaying balance:",
+    currentBalance,
+    "from initial_balance:",
+    userProfile?.initial_balance
+  ); // Debug log
+
+  // Check if expense exceeds balance
+  const exceedsBalance =
+    type === "pengeluaran" && transactionAmount > currentBalance;
+
   return (
     <form
       onSubmit={onSubmit}
@@ -215,19 +316,49 @@ function TransactionForm({
       <Card className="bg-gray-200 border-none">
         <CardContent className="pt-4 sm:pt-6">
           <div className="text-center">
-            <p className="text-sm sm:text-base font-bold mb-1">Cash</p>
-            <p className="text-base sm:text-lg font-semibold">Rp 0</p>
+            <p className="text-sm sm:text-base font-bold mb-1">{accountName}</p>
+            <div className="space-y-1">
+              <p className="text-base sm:text-lg font-semibold">
+                Rp {currentBalance.toLocaleString("id-ID")}
+              </p>
+            </div>
+            {formData.amount && (
+              <div className="mt-2 pt-2 border-t border-gray-300">
+                <p className="text-xs text-gray-600 mb-1">
+                  Saldo setelah transaksi:
+                </p>
+                <p
+                  className={`text-sm font-semibold ${
+                    previewBalance < 0 ? "text-red-600" : "text-green-600"
+                  }`}
+                >
+                  Rp {previewBalance.toLocaleString("id-ID")}
+                </p>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
 
       {/* Amount Input */}
       <div className="space-y-3">
-        <p className="text-4xl sm:text-5xl lg:text-6xl font-light text-gray-400 text-center">
+        <p
+          className={`text-4xl sm:text-5xl lg:text-6xl font-light text-center ${
+            exceedsBalance ? "text-red-400" : "text-gray-400"
+          }`}
+        >
           Rp {formData.amount ? formatRupiah(formData.amount) : "0"}
         </p>
 
-        {/* Amount input — sekarang seragam dengan input lain */}
+        {exceedsBalance && (
+          <div className="text-center">
+            <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg">
+              Jumlah melebihi saldo tersedia
+            </p>
+          </div>
+        )}
+
+        {/* Amount input */}
         <Input
           id="amount"
           type="text"
@@ -237,7 +368,9 @@ function TransactionForm({
           onChange={(e) =>
             setFormData({ ...formData, amount: formatRupiah(e.target.value) })
           }
-          className="w-full bg-gray-200 border-none h-12 sm:h-14 text-sm sm:text-base rounded-xl px-4 py-0 text-center"
+          className={`w-full border-none h-12 sm:h-14 text-sm sm:text-base rounded-xl px-4 py-0 text-center ${
+            exceedsBalance ? "bg-red-100" : "bg-gray-200"
+          }`}
           required
         />
       </div>
@@ -292,14 +425,18 @@ function TransactionForm({
       {/* Submit Button */}
       <Button
         type="submit"
-        disabled={isSubmitting}
+        disabled={isSubmitting || exceedsBalance}
         className={`w-full h-12 sm:h-14 text-base sm:text-lg font-semibold rounded-xl ${
           type === "pemasukkan"
             ? "bg-green-600 hover:bg-green-700"
             : "bg-red-500 hover:bg-red-600"
         } disabled:opacity-50`}
       >
-        {isSubmitting ? "Menyimpan..." : "Catat"}
+        {isSubmitting
+          ? "Menyimpan..."
+          : exceedsBalance
+          ? "Saldo Tidak Mencukupi"
+          : "Catat"}
       </Button>
     </form>
   );
