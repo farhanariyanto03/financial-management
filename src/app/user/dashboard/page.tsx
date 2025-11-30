@@ -22,7 +22,15 @@ import {
   ChartTooltipContent,
 } from "@/components/ui/chart";
 import { Button } from "@/components/ui/button";
-import { Plus, ArrowUp, ArrowDown, ChevronDown, LogOut } from "lucide-react";
+import {
+  Plus,
+  ArrowUp,
+  ArrowDown,
+  ChevronDown,
+  LogOut,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 import { getAuthUser } from "@/lib/utils";
 import ModalAddTransaction from "./modalAddTransaction/page";
@@ -571,6 +579,314 @@ export default function DashboardPage() {
     setGoal(updatedGoal);
   };
 
+  // Add state for mobile chart swiper
+  const [currentChartIndex, setCurrentChartIndex] = useState(0);
+  const [isMobile, setIsMobile] = useState(false);
+
+  // Check if mobile view
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 1024); // lg breakpoint
+    };
+
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
+
+  // Chart navigation functions
+  const nextChart = () => {
+    setCurrentChartIndex((prev) => (prev + 1) % 3);
+  };
+
+  const prevChart = () => {
+    setCurrentChartIndex((prev) => (prev - 1 + 3) % 3);
+  };
+
+  const goToChart = (index: number) => {
+    setCurrentChartIndex(index);
+  };
+
+  // Chart components as separate elements
+  const BarChartCard = () => (
+    <Card className="mb-6 shadow-lg mr-0 lg:mr-6 w-full flex-shrink-0">
+      <CardHeader>
+        <CardTitle className="text-lg">Grafik Arus Kas</CardTitle>
+        <div className="flex justify-between items-center">
+          <span className="text-sm text-gray-600">
+            Perbandingan pemasukkan dan pengeluaran bulanan
+          </span>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <ChartContainer config={chartConfig} className="h-[300px] w-full">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart
+              data={
+                monthlyChartData.length > 0 ? monthlyChartData : monthlyData
+              }
+              margin={{ top: 20, right: 10, left: 10, bottom: 5 }}
+            >
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="month" fontSize={12} />
+              <YAxis
+                tickFormatter={(value) => `${(value / 1000000).toFixed(1)}M`}
+                fontSize={12}
+              />
+              <ChartTooltip
+                content={<ChartTooltipContent />}
+                formatter={(value: number) => [
+                  `Rp ${value.toLocaleString("id-ID")}`,
+                  value ===
+                  (monthlyChartData.length > 0
+                    ? monthlyChartData
+                    : monthlyData
+                  ).find((d) => d.pemasukkan === value)?.pemasukkan
+                    ? "Pemasukkan"
+                    : "Pengeluaran",
+                ]}
+              />
+              <Legend />
+              <Bar
+                dataKey="pemasukkan"
+                fill="var(--color-pemasukkan)"
+                name="Pemasukkan"
+                radius={[2, 2, 0, 0]}
+              />
+              <Bar
+                dataKey="pengeluaran"
+                fill="var(--color-pengeluaran)"
+                name="Pengeluaran"
+                radius={[2, 2, 0, 0]}
+              />
+            </BarChart>
+          </ResponsiveContainer>
+        </ChartContainer>
+
+        {/* Keterangan singkat di bawah grafik */}
+        <div className="mt-4">
+          <div className="flex items-center gap-3 bg-gray-100 rounded-lg px-4 py-3 max-w-md">
+            <div className="w-8 h-8 rounded-md bg-black flex items-center justify-center text-white">
+              i
+            </div>
+            <div className="text-sm text-gray-700">
+              <span>Kamu memiliki sisa uang </span>
+              <span className="font-semibold">
+                {isSavingMore ? "lebih banyak" : "lebih sedikit"}
+              </span>
+              <span> </span>
+              <span
+                className={`font-semibold ${
+                  isSavingMore ? "text-green-600" : "text-red-600"
+                }`}
+              >
+                Rp {savingsChangeFormatted}
+              </span>
+              <span> dibanding bulan lalu</span>
+              {savingsChange !== 0 && (
+                <>
+                  <span className="text-xs block mt-1">
+                    Sisa bulan ini: Rp {currentSavings.toLocaleString("id-ID")}|
+                    Bulan lalu: Rp {previousSavings.toLocaleString("id-ID")}
+                  </span>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+
+  const IncomeChartCard = () => (
+    <Card className="shadow-lg w-full flex-shrink-0">
+      <CardHeader>
+        <CardTitle className="text-lg">Grafik Pemasukkan</CardTitle>
+        <div className="text-xs text-gray-500">
+          {new Date().toLocaleDateString("id-ID", {
+            month: "long",
+            year: "numeric",
+          })}
+        </div>
+      </CardHeader>
+      <CardContent>
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex flex-col">
+            <span className="text-sm font-medium text-gray-700">Bulan ini</span>
+            <span className="text-2xl font-bold text-black">
+              Rp {totalIncomeData.toLocaleString("id-ID")}
+            </span>
+          </div>
+          <div className="text-right">
+            <div className="text-xs text-gray-500">vs periode sebelumnya</div>
+            <div
+              className={`mt-1 text-sm font-semibold ${
+                incomeChangePercent >= 0 ? "text-green-600" : "text-red-600"
+              }`}
+            >
+              {incomeChangePercent >= 0 ? "+" : ""}
+              {incomeChangePercent.toFixed(1)}%
+            </div>
+          </div>
+        </div>
+
+        {/* Chart + Legend side-by-side */}
+        <div className="flex items-center gap-6">
+          <div className="w-2/3 h-[300px]">
+            {realIncomeData.length > 0 ? (
+              <ChartContainer config={chartConfig} className="h-full w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={realIncomeData}
+                      cx="50%"
+                      cy="50%"
+                      outerRadius={80}
+                      innerRadius={40}
+                      paddingAngle={5}
+                      dataKey="value"
+                    >
+                      {realIncomeData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.fill} />
+                      ))}
+                    </Pie>
+                    <ChartTooltip
+                      content={<ChartTooltipContent />}
+                      formatter={(value: number) => [
+                        `Rp ${value.toLocaleString("id-ID")}`,
+                        "Jumlah",
+                      ]}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+              </ChartContainer>
+            ) : (
+              <div className="flex items-center justify-center h-full text-gray-500">
+                <div className="text-center">
+                  <div className="text-4xl mb-2">📊</div>
+                  <div className="text-sm">Tidak ada data</div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="w-1/3 h-[300px] flex flex-col justify-center items-start space-y-2">
+            {realIncomeData.length > 0 ? (
+              realIncomeData.map((item, index) => (
+                <div key={index} className="flex items-center gap-2">
+                  <div
+                    className="w-2 h-2 rounded-full"
+                    style={{ backgroundColor: item.fill }}
+                  />
+                  <span className="text-xs text-gray-600">{item.name}</span>
+                </div>
+              ))
+            ) : (
+              <div className="text-xs text-gray-500 text-center w-full">
+                Tidak ada data pemasukkan
+              </div>
+            )}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+
+  const ExpenseChartCard = () => (
+    <Card className="shadow-lg w-full flex-shrink-0">
+      <CardHeader>
+        <CardTitle className="text-lg">Grafik Pengeluaran</CardTitle>
+        <div className="text-xs text-gray-500">
+          {new Date().toLocaleDateString("id-ID", {
+            month: "long",
+            year: "numeric",
+          })}
+        </div>
+      </CardHeader>
+      <CardContent>
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex flex-col">
+            <span className="text-sm font-medium text-gray-700">Bulan ini</span>
+            <span className="text-2xl font-bold text-black">
+              Rp {totalExpenseData.toLocaleString("id-ID")}
+            </span>
+          </div>
+          <div className="text-right">
+            <div className="text-xs text-gray-500">vs periode sebelumnya</div>
+            <div
+              className={`mt-1 text-sm font-semibold ${
+                expenseChangePercent <= 0 ? "text-green-600" : "text-red-600"
+              }`}
+            >
+              {expenseChangePercent >= 0 ? "+" : ""}
+              {expenseChangePercent.toFixed(1)}%
+            </div>
+          </div>
+        </div>
+
+        {/* Chart + Legend side-by-side */}
+        <div className="flex items-center gap-6">
+          <div className="w-2/3 h-[300px]">
+            {realExpenseData.length > 0 ? (
+              <ChartContainer config={chartConfig} className="h-full w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={realExpenseData}
+                      cx="50%"
+                      cy="50%"
+                      outerRadius={80}
+                      innerRadius={40}
+                      paddingAngle={5}
+                      dataKey="value"
+                    >
+                      {realExpenseData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.fill} />
+                      ))}
+                    </Pie>
+                    <ChartTooltip
+                      content={<ChartTooltipContent />}
+                      formatter={(value: number) => [
+                        `Rp ${value.toLocaleString("id-ID")}`,
+                        "Jumlah",
+                      ]}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+              </ChartContainer>
+            ) : (
+              <div className="flex items-center justify-center h-full text-gray-500">
+                <div className="text-center">
+                  <div className="text-4xl mb-2">📊</div>
+                  <div className="text-sm">Tidak ada data</div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="w-1/3 h-[300px] flex flex-col justify-center items-start space-y-2">
+            {realExpenseData.length > 0 ? (
+              realExpenseData.map((item, index) => (
+                <div key={index} className="flex items-center gap-2">
+                  <div
+                    className="w-2 h-2 rounded-full"
+                    style={{ backgroundColor: item.fill }}
+                  />
+                  <span className="text-xs text-gray-600">{item.name}</span>
+                </div>
+              ))
+            ) : (
+              <div className="text-xs text-gray-500 text-center w-full">
+                Tidak ada data pengeluaran
+              </div>
+            )}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -709,300 +1025,78 @@ export default function DashboardPage() {
         </div>
       ) : null}
 
-      {/* Bar Chart - Income vs Expense Comparison */}
-      <Card className="mb-6 shadow-lg mr-6">
-        <CardHeader>
-          <CardTitle className="text-lg">Grafik Arus Kas</CardTitle>
-          <div className="flex justify-between items-center">
-            <span className="text-sm text-gray-600">
-              Perbandingan pemasukkan dan pengeluaran bulanan
+      {/* Charts Section - Mobile Swiper / Desktop Grid */}
+      {isMobile ? (
+        // Mobile: Swiper View
+        <div className="mb-6 relative">
+          {/* Chart Container */}
+          <div className="overflow-hidden relative">
+            <div
+              className="flex transition-transform duration-300 ease-in-out"
+              style={{ transform: `translateX(-${currentChartIndex * 100}%)` }}
+            >
+              <BarChartCard />
+              <IncomeChartCard />
+              <ExpenseChartCard />
+            </div>
+
+            {/* Previous Button - Centered */}
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={prevChart}
+              className="absolute left-2 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white shadow-lg z-10 hover:bg-gray-50"
+            >
+              <ChevronLeft className="w-5 h-5" />
+            </Button>
+
+            {/* Next Button - Centered */}
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={nextChart}
+              className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white shadow-lg z-10 hover:bg-gray-50"
+            >
+              <ChevronRight className="w-5 h-5" />
+            </Button>
+          </div>
+
+          {/* Dot Indicators and Chart Labels */}
+          <div className="flex flex-col items-center mt-4 space-y-2">
+            {/* Dot Indicators */}
+            <div className="flex items-center space-x-2">
+              {[0, 1, 2].map((index) => (
+                <button
+                  key={index}
+                  onClick={() => goToChart(index)}
+                  className={`w-2 h-2 rounded-full transition-colors ${
+                    currentChartIndex === index ? "bg-green-500" : "bg-gray-300"
+                  }`}
+                />
+              ))}
+            </div>
+
+            {/* Chart Labels */}
+            <span className="text-sm font-medium text-gray-700">
+              {currentChartIndex === 0 && "Grafik Arus Kas"}
+              {currentChartIndex === 1 && "Grafik Pemasukkan"}
+              {currentChartIndex === 2 && "Grafik Pengeluaran"}
             </span>
           </div>
-        </CardHeader>
-        <CardContent>
-          <ChartContainer config={chartConfig} className="h-[300px] w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart
-                data={
-                  monthlyChartData.length > 0 ? monthlyChartData : monthlyData
-                }
-                margin={{ top: 20, right: 10, left: 10, bottom: 5 }}
-              >
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="month" fontSize={12} />
-                <YAxis
-                  tickFormatter={(value) => `${(value / 1000000).toFixed(1)}M`}
-                  fontSize={12}
-                />
-                <ChartTooltip
-                  content={<ChartTooltipContent />}
-                  formatter={(value: number) => [
-                    `Rp ${value.toLocaleString("id-ID")}`,
-                    value ===
-                    (monthlyChartData.length > 0
-                      ? monthlyChartData
-                      : monthlyData
-                    ).find((d) => d.pemasukkan === value)?.pemasukkan
-                      ? "Pemasukkan"
-                      : "Pengeluaran",
-                  ]}
-                />
-                <Legend />
-                <Bar
-                  dataKey="pemasukkan"
-                  fill="var(--color-pemasukkan)"
-                  name="Pemasukkan"
-                  radius={[2, 2, 0, 0]}
-                />
-                <Bar
-                  dataKey="pengeluaran"
-                  fill="var(--color-pengeluaran)"
-                  name="Pengeluaran"
-                  radius={[2, 2, 0, 0]}
-                />
-              </BarChart>
-            </ResponsiveContainer>
-          </ChartContainer>
+        </div>
+      ) : (
+        // Desktop: Original Layout
+        <>
+          {/* Bar Chart - Income vs Expense Comparison */}
+          <BarChartCard />
 
-          {/* Keterangan singkat di bawah grafik */}
-          <div className="mt-4">
-            <div className="flex items-center gap-3 bg-gray-100 rounded-lg px-4 py-3 max-w-md">
-              <div className="w-8 h-8 rounded-md bg-black flex items-center justify-center text-white">
-                i
-              </div>
-              <div className="text-sm text-gray-700">
-                <span>Kamu memiliki sisa uang </span>
-                <span className="font-semibold">
-                  {isSavingMore ? "lebih banyak" : "lebih sedikit"}
-                </span>
-                <span> </span>
-                <span
-                  className={`font-semibold ${
-                    isSavingMore ? "text-green-600" : "text-red-600"
-                  }`}
-                >
-                  Rp {savingsChangeFormatted}
-                </span>
-                <span> dibanding bulan lalu</span>
-                {savingsChange !== 0 && (
-                  <>
-                    <span className="text-xs block mt-1">
-                      Sisa bulan ini: Rp{" "}
-                      {currentSavings.toLocaleString("id-ID")}| Bulan lalu: Rp{" "}
-                      {previousSavings.toLocaleString("id-ID")}
-                    </span>
-                  </>
-                )}
-              </div>
-            </div>
+          {/* Pie Charts - Income and Expense Breakdown */}
+          <div className="grid gap-4 grid-cols-1 lg:grid-cols-2 mb-6 mr-6">
+            <IncomeChartCard />
+            <ExpenseChartCard />
           </div>
-        </CardContent>
-      </Card>
-
-      {/* Pie Charts - Income and Expense Breakdown */}
-      <div className="grid gap-4 grid-cols-1 lg:grid-cols-2 mb-6 mr-6">
-        {/* Income Pie Chart */}
-        <Card className="shadow-lg">
-          <CardHeader>
-            <CardTitle className="text-lg">Grafik Pemasukkan</CardTitle>
-            <div className="text-xs text-gray-500">
-              {new Date().toLocaleDateString("id-ID", {
-                month: "long",
-                year: "numeric",
-              })}
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex flex-col">
-                <span className="text-sm font-medium text-gray-700">
-                  Bulan ini
-                </span>
-                <span className="text-2xl font-bold text-black">
-                  Rp {totalIncomeData.toLocaleString("id-ID")}
-                </span>
-              </div>
-              <div className="text-right">
-                <div className="text-xs text-gray-500">
-                  vs periode sebelumnya
-                </div>
-                <div
-                  className={`mt-1 text-sm font-semibold ${
-                    incomeChangePercent >= 0 ? "text-green-600" : "text-red-600"
-                  }`}
-                >
-                  {incomeChangePercent >= 0 ? "+" : ""}
-                  {incomeChangePercent.toFixed(1)}%
-                </div>
-              </div>
-            </div>
-
-            {/* Chart + Legend side-by-side */}
-            <div className="flex items-center gap-6">
-              <div className="w-2/3 h-[300px]">
-                {realIncomeData.length > 0 ? (
-                  <ChartContainer
-                    config={chartConfig}
-                    className="h-full w-full"
-                  >
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie
-                          data={realIncomeData}
-                          cx="50%"
-                          cy="50%"
-                          outerRadius={80}
-                          innerRadius={40}
-                          paddingAngle={5}
-                          dataKey="value"
-                        >
-                          {realIncomeData.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={entry.fill} />
-                          ))}
-                        </Pie>
-                        <ChartTooltip
-                          content={<ChartTooltipContent />}
-                          formatter={(value: number) => [
-                            `Rp ${value.toLocaleString("id-ID")}`,
-                            "Jumlah",
-                          ]}
-                        />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  </ChartContainer>
-                ) : (
-                  <div className="flex items-center justify-center h-full text-gray-500">
-                    <div className="text-center">
-                      <div className="text-4xl mb-2">📊</div>
-                      <div className="text-sm">Tidak ada data</div>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <div className="w-1/3 h-[300px] flex flex-col justify-center items-start space-y-2">
-                {realIncomeData.length > 0 ? (
-                  realIncomeData.map((item, index) => (
-                    <div key={index} className="flex items-center gap-2">
-                      <div
-                        className="w-2 h-2 rounded-full"
-                        style={{ backgroundColor: item.fill }}
-                      />
-                      <span className="text-xs text-gray-600">{item.name}</span>
-                    </div>
-                  ))
-                ) : (
-                  <div className="text-xs text-gray-500 text-center w-full">
-                    Tidak ada data pemasukkan
-                  </div>
-                )}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Expense Pie Chart */}
-        <Card className="shadow-lg">
-          <CardHeader>
-            <CardTitle className="text-lg">Grafik Pengeluaran</CardTitle>
-            <div className="text-xs text-gray-500">
-              {new Date().toLocaleDateString("id-ID", {
-                month: "long",
-                year: "numeric",
-              })}
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex flex-col">
-                <span className="text-sm font-medium text-gray-700">
-                  Bulan ini
-                </span>
-                <span className="text-2xl font-bold text-black">
-                  Rp {totalExpenseData.toLocaleString("id-ID")}
-                </span>
-              </div>
-              <div className="text-right">
-                <div className="text-xs text-gray-500">
-                  vs periode sebelumnya
-                </div>
-                <div
-                  className={`mt-1 text-sm font-semibold ${
-                    expenseChangePercent <= 0
-                      ? "text-green-600"
-                      : "text-red-600"
-                  }`}
-                >
-                  {expenseChangePercent >= 0 ? "+" : ""}
-                  {expenseChangePercent.toFixed(1)}%
-                </div>
-              </div>
-            </div>
-
-            {/* Chart + Legend side-by-side */}
-            <div className="flex items-center gap-6">
-              <div className="w-2/3 h-[300px]">
-                {realExpenseData.length > 0 ? (
-                  <ChartContainer
-                    config={chartConfig}
-                    className="h-full w-full"
-                  >
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie
-                          data={realExpenseData}
-                          cx="50%"
-                          cy="50%"
-                          outerRadius={80}
-                          innerRadius={40}
-                          paddingAngle={5}
-                          dataKey="value"
-                        >
-                          {realExpenseData.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={entry.fill} />
-                          ))}
-                        </Pie>
-                        <ChartTooltip
-                          content={<ChartTooltipContent />}
-                          formatter={(value: number) => [
-                            `Rp ${value.toLocaleString("id-ID")}`,
-                            "Jumlah",
-                          ]}
-                        />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  </ChartContainer>
-                ) : (
-                  <div className="flex items-center justify-center h-full text-gray-500">
-                    <div className="text-center">
-                      <div className="text-4xl mb-2">📊</div>
-                      <div className="text-sm">Tidak ada data</div>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <div className="w-1/3 h-[300px] flex flex-col justify-center items-start space-y-2">
-                {realExpenseData.length > 0 ? (
-                  realExpenseData.map((item, index) => (
-                    <div key={index} className="flex items-center gap-2">
-                      <div
-                        className="w-2 h-2 rounded-full"
-                        style={{ backgroundColor: item.fill }}
-                      />
-                      <span className="text-xs text-gray-600">{item.name}</span>
-                    </div>
-                  ))
-                ) : (
-                  <div className="text-xs text-gray-500 text-center w-full">
-                    Tidak ada data pengeluaran
-                  </div>
-                )}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+        </>
+      )}
 
       {/* Recent Transactions */}
       <Card className="shadow-lg mr-6">
