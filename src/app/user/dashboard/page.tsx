@@ -101,9 +101,6 @@ const chartConfig = {
   },
 };
 
-// Add modal account info for the Add Menu modal
-const modalAccount = { name: "Cash", balance: 800000 };
-
 export default function DashboardPage() {
   const [hasGoal, setHasGoal] = useState(false);
   const [showAddMenu, setShowAddMenu] = useState(false);
@@ -118,6 +115,33 @@ export default function DashboardPage() {
   const [realExpenseData, setRealExpenseData] = useState<
     Array<{ name: string; value: number; fill: string }>
   >([]);
+  const [realRecentTransactions, setRealRecentTransactions] = useState<
+    Array<{
+      id: string;
+      type: string;
+      amount: number;
+      note: string | null;
+      date_transaction: string;
+      categories: {
+        id: string;
+        name: string;
+      };
+    }>
+  >([]);
+  const [showAllTransactions, setShowAllTransactions] = useState(false);
+  const [allTransactions, setAllTransactions] = useState<
+    Array<{
+      id: string;
+      type: string;
+      amount: number;
+      note: string | null;
+      date_transaction: string;
+      categories: {
+        id: string;
+        name: string;
+      };
+    }>
+  >([]);
   const router = useRouter();
 
   const [goal, setGoal] = useState<{
@@ -129,6 +153,16 @@ export default function DashboardPage() {
     end_date: string;
     minWeekly: number;
   } | null>(null);
+
+  const [monthlyChartData, setMonthlyChartData] = useState<
+    Array<{ month: string; pemasukkan: number; pengeluaran: number }>
+  >([]);
+  const [currentMonthStats, setCurrentMonthStats] = useState({
+    currentIncome: 0,
+    currentExpense: 0,
+    previousIncome: 0,
+    previousExpense: 0,
+  });
 
   const progress = goal ? (goal.current_amount / goal.total_budget) * 100 : 0;
   const totalExpenseData = realExpenseData.reduce(
@@ -144,13 +178,15 @@ export default function DashboardPage() {
   const incomeChangePercent = 10; // positive => green
   const expenseChangePercent = -4; // negative => red
 
-  // compute savings for the latest month (pemasukkan - pengeluaran)
-  const latestMonth = monthlyData[monthlyData.length - 1];
-  const savingsThisMonth = latestMonth
-    ? latestMonth.pemasukkan - latestMonth.pengeluaran
-    : 0;
-  const savingsFormatted = Math.abs(savingsThisMonth).toLocaleString("id-ID");
-  const isSavingsPositive = savingsThisMonth >= 0;
+  // Calculate savings comparison (remaining money after expenses)
+  const currentSavings =
+    currentMonthStats.currentIncome - currentMonthStats.currentExpense;
+  const previousSavings =
+    currentMonthStats.previousIncome - currentMonthStats.previousExpense;
+  const savingsChange = currentSavings - previousSavings;
+  const isSavingMore = savingsChange > 0; // having more remaining money is good
+  const savingsChangeFormatted =
+    Math.abs(savingsChange).toLocaleString("id-ID");
 
   const handleAddSavings = async () => {
     if (!addAmount || !goal) return;
@@ -313,7 +349,7 @@ export default function DashboardPage() {
         const data = await response.json();
 
         if (response.ok) {
-          console.log("API Response for current month:", data);
+          // console.log("API Response for current month:", data);
 
           // Convert income data
           const incomeChartData = Object.entries(
@@ -334,9 +370,9 @@ export default function DashboardPage() {
               color = colors[index % colors.length];
             }
 
-            console.log(
-              `Income category: ${category}, amount: ${amount}, color: ${color}`
-            );
+            // console.log(
+            //   `Income category: ${category}, amount: ${amount}, color: ${color}`
+            // );
 
             return {
               name: category,
@@ -364,9 +400,9 @@ export default function DashboardPage() {
               color = colors[index % colors.length];
             }
 
-            console.log(
-              `Expense category: ${category}, amount: ${amount}, color: ${color}`
-            );
+            // console.log(
+            //   `Expense category: ${category}, amount: ${amount}, color: ${color}`
+            // );
 
             return {
               name: category,
@@ -405,6 +441,97 @@ export default function DashboardPage() {
     return () => clearInterval(checkMonthChange);
   }, [userId]);
 
+  // Fetch recent transactions data
+  useEffect(() => {
+    const fetchRecentTransactions = async () => {
+      if (!userId) return;
+
+      try {
+        const response = await fetch("/api/transaction");
+        const data = await response.json();
+
+        if (response.ok && data.transactions) {
+          // Store all transactions
+          setAllTransactions(data.transactions);
+          // Get last 5 transactions for initial display
+          const recentTxns = data.transactions.slice(0, 5);
+          setRealRecentTransactions(recentTxns);
+          console.log("Recent transactions loaded:", recentTxns);
+        } else {
+          console.error("Failed to fetch recent transactions:", data.error);
+        }
+      } catch (error) {
+        console.error("Error fetching recent transactions:", error);
+      }
+    };
+
+    fetchRecentTransactions();
+  }, [userId]);
+
+  // Get transactions to display based on show more state
+  const transactionsToShow = showAllTransactions
+    ? allTransactions
+    : realRecentTransactions;
+
+  // Group transactions by date
+  const groupTransactionsByDate = (transactions: typeof allTransactions) => {
+    const groups: { [key: string]: typeof transactions } = {};
+
+    transactions.forEach((transaction) => {
+      const dateKey = transaction.date_transaction;
+      if (!groups[dateKey]) {
+        groups[dateKey] = [];
+      }
+      groups[dateKey].push(transaction);
+    });
+
+    return Object.entries(groups).sort(
+      ([a], [b]) => new Date(b).getTime() - new Date(a).getTime()
+    );
+  };
+
+  const groupedTransactions = groupTransactionsByDate(transactionsToShow);
+
+  // Format date for grouping
+  const formatDateGroup = (dateString: string) => {
+    const date = new Date(dateString);
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+
+    if (date.toDateString() === today.toDateString()) {
+      return "Hari ini";
+    } else if (date.toDateString() === yesterday.toDateString()) {
+      return "Kemarin";
+    } else {
+      return date.toLocaleDateString("id-ID", {
+        weekday: "long",
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+      });
+    }
+  };
+
+  // Helper function to format time ago
+  const getTimeAgo = (dateString: string) => {
+    const now = new Date();
+    const transactionDate = new Date(dateString);
+    const diffInMilliseconds = now.getTime() - transactionDate.getTime();
+    const diffInHours = Math.floor(diffInMilliseconds / (1000 * 60 * 60));
+    const diffInDays = Math.floor(diffInHours / 24);
+
+    if (diffInHours < 1) {
+      return "Baru saja";
+    } else if (diffInHours < 24) {
+      return `${diffInHours} jam yang lalu`;
+    } else if (diffInDays === 1) {
+      return "1 hari yang lalu";
+    } else {
+      return `${diffInDays} hari yang lalu`;
+    }
+  };
+
   // Format date
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -426,6 +553,75 @@ export default function DashboardPage() {
     const digits = String(value || "").replace(/\D/g, "");
     return digits ? Number(digits) : 0;
   };
+
+  // Fetch monthly data for cash flow chart
+  useEffect(() => {
+    const fetchMonthlyData = async () => {
+      if (!userId) return;
+
+      try {
+        const response = await fetch(
+          `/api/transaction?type=monthly&user_id=${userId}`
+        );
+        const data = await response.json();
+
+        if (response.ok) {
+          setMonthlyChartData(data.monthlyData || []);
+          setCurrentMonthStats(
+            data.currentMonthStats || {
+              currentIncome: 0,
+              currentExpense: 0,
+              previousIncome: 0,
+              previousExpense: 0,
+            }
+          );
+        } else {
+          console.error("Failed to fetch monthly data:", data.error);
+        }
+      } catch (error) {
+        console.error("Error fetching monthly data:", error);
+      }
+    };
+
+    fetchMonthlyData();
+  }, [userId]);
+
+  // Add new state for user account data
+  const [userAccount, setUserAccount] = useState<{
+    name: string;
+    balance: number;
+  }>({
+    name: "Cash",
+    balance: 0,
+  });
+
+  // Add function to fetch user profile
+  const fetchUserProfile = async () => {
+    if (!userId) return;
+
+    try {
+      const response = await fetch("/api/user/profile");
+      const data = await response.json();
+
+      if (response.ok) {
+        setUserAccount({
+          name: data.kas,
+          balance: data.initial_balance,
+        });
+      } else {
+        console.error("Failed to fetch user profile:", data.error);
+      }
+    } catch (error) {
+      console.error("Error fetching user profile:", error);
+    }
+  };
+
+  // Add useEffect to fetch user profile
+  useEffect(() => {
+    if (userId) {
+      fetchUserProfile();
+    }
+  }, [userId]);
 
   if (isLoading) {
     return (
@@ -528,7 +724,7 @@ export default function DashboardPage() {
               {/* Min weekly amount */}
               <div className="flex items-center justify-between mb-3 pb-3 border-b border-gray-200">
                 <span className="text-sm text-gray-600">
-                  Min week to reach goal
+                  Min month to reach goal
                 </span>
                 <span className="text-base font-bold text-black">
                   Rp {goal.minWeekly.toLocaleString("id-ID")}
@@ -579,7 +775,9 @@ export default function DashboardPage() {
           <ChartContainer config={chartConfig} className="h-[300px] w-full">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart
-                data={monthlyData}
+                data={
+                  monthlyChartData.length > 0 ? monthlyChartData : monthlyData
+                }
                 margin={{ top: 20, right: 10, left: 10, bottom: 5 }}
               >
                 <CartesianGrid strokeDasharray="3 3" />
@@ -593,7 +791,10 @@ export default function DashboardPage() {
                   formatter={(value: number) => [
                     `Rp ${value.toLocaleString("id-ID")}`,
                     value ===
-                    monthlyData.find((d) => d.pemasukkan === value)?.pemasukkan
+                    (monthlyChartData.length > 0
+                      ? monthlyChartData
+                      : monthlyData
+                    ).find((d) => d.pemasukkan === value)?.pemasukkan
                       ? "Pemasukkan"
                       : "Pengeluaran",
                   ]}
@@ -622,21 +823,28 @@ export default function DashboardPage() {
                 i
               </div>
               <div className="text-sm text-gray-700">
-                <span>Kamu </span>
+                <span>Kamu memiliki sisa uang </span>
                 <span className="font-semibold">
-                  {isSavingsPositive
-                    ? "menghemat"
-                    : "mengeluarkan lebih banyak dari pemasukkan"}
+                  {isSavingMore ? "lebih banyak" : "lebih sedikit"}
                 </span>
                 <span> </span>
                 <span
                   className={`font-semibold ${
-                    isSavingsPositive ? "text-green-600" : "text-red-600"
+                    isSavingMore ? "text-green-600" : "text-red-600"
                   }`}
                 >
-                  Rp {savingsFormatted}
+                  Rp {savingsChangeFormatted}
                 </span>
-                <span> di bulan ini</span>
+                <span> dibanding bulan lalu</span>
+                {savingsChange !== 0 && (
+                  <>
+                    <span className="text-xs block mt-1">
+                      Sisa bulan ini: Rp{" "}
+                      {currentSavings.toLocaleString("id-ID")}| Bulan lalu: Rp{" "}
+                      {previousSavings.toLocaleString("id-ID")}
+                    </span>
+                  </>
+                )}
               </div>
             </div>
           </div>
@@ -850,50 +1058,228 @@ export default function DashboardPage() {
 
       {/* Recent Transactions */}
       <Card className="shadow-lg mr-6">
-        <CardHeader>
-          <CardTitle className="text-lg">Pengeluaran Terakhir</CardTitle>
+        <CardHeader className="pb-4">
+          <div>
+            <CardTitle className="text-lg">Transaksi Terakhir</CardTitle>
+            <p className="text-sm text-gray-500">
+              {showAllTransactions
+                ? `${allTransactions.length} transaksi`
+                : "5 transaksi terbaru"}
+            </p>
+          </div>
         </CardHeader>
         <CardContent>
-          <div className="space-y-3">
-            {recentTransactions.map((transaction) => (
-              <div
-                key={transaction.id}
-                className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
-              >
-                <div className="flex items-center gap-3">
-                  <div
-                    className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                      transaction.type === "income"
-                        ? "bg-green-100"
-                        : "bg-red-100"
-                    }`}
-                  >
-                    {transaction.type === "income" ? (
-                      <ArrowUp className="w-4 h-4 text-green-600" />
-                    ) : (
-                      <ArrowDown className="w-4 h-4 text-red-600" />
-                    )}
+          <div className="space-y-4">
+            {transactionsToShow.length > 0 ? (
+              showAllTransactions ? (
+                // Show grouped transactions when expanded
+                groupedTransactions.map(([date, dateTransactions]) => (
+                  <div key={date} className="space-y-3">
+                    {/* Date Header */}
+                    <div className="sticky top-0 bg-gray-50 py-2 border-b border-gray-200">
+                      <h3 className="text-sm font-medium text-gray-600">
+                        {formatDateGroup(date)}
+                      </h3>
+                    </div>
+
+                    {/* Transactions for this date */}
+                    <div className="space-y-2">
+                      {dateTransactions.map((transaction) => (
+                        <div
+                          key={transaction.id}
+                          className="flex items-start gap-3 p-3 bg-white rounded-lg border border-gray-100 hover:bg-gray-50 transition-colors"
+                        >
+                          {/* Icon */}
+                          <div
+                            className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
+                              transaction.type === "income"
+                                ? "bg-green-100"
+                                : "bg-red-100"
+                            }`}
+                          >
+                            {transaction.type === "income" ? (
+                              <ArrowUp className="w-4 h-4 text-green-600" />
+                            ) : (
+                              <ArrowDown className="w-4 h-4 text-red-600" />
+                            )}
+                          </div>
+
+                          {/* Content */}
+                          <div className="flex-1 min-w-0">
+                            {/* Category and Amount */}
+                            <div className="flex items-center justify-between mb-1">
+                              <p className="font-semibold text-sm text-gray-900">
+                                {transaction.categories.name}
+                              </p>
+                              <span
+                                className={`font-bold text-sm ${
+                                  transaction.type === "income"
+                                    ? "text-green-600"
+                                    : "text-red-600"
+                                }`}
+                              >
+                                {transaction.type === "income" ? "+" : "-"}Rp{" "}
+                                {transaction.amount.toLocaleString("id-ID")}
+                              </span>
+                            </div>
+
+                            {/* Note */}
+                            {transaction.note && (
+                              <p className="text-xs text-gray-600 mb-2 break-words">
+                                {transaction.note}
+                              </p>
+                            )}
+
+                            {/* Time and Type */}
+                            <div className="flex items-center justify-between">
+                              <p className="text-xs text-gray-500">
+                                {getTimeAgo(transaction.date_transaction)}
+                              </p>
+                              <span className="text-xs text-gray-400 capitalize">
+                                {transaction.type === "income"
+                                  ? "Pemasukkan"
+                                  : "Pengeluaran"}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                  <div>
-                    <p className="font-medium text-sm">
-                      {transaction.category}
-                    </p>
-                    <p className="text-xs text-gray-600">{transaction.time}</p>
-                  </div>
+                ))
+              ) : (
+                // Show simple list when collapsed (first 5)
+                <div className="space-y-3">
+                  {transactionsToShow.map((transaction) => (
+                    <div
+                      key={transaction.id}
+                      className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+                    >
+                      {/* Icon */}
+                      <div
+                        className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
+                          transaction.type === "income"
+                            ? "bg-green-100"
+                            : "bg-red-100"
+                        }`}
+                      >
+                        {transaction.type === "income" ? (
+                          <ArrowUp className="w-4 h-4 text-green-600" />
+                        ) : (
+                          <ArrowDown className="w-4 h-4 text-red-600" />
+                        )}
+                      </div>
+
+                      {/* Content */}
+                      <div className="flex-1 min-w-0">
+                        {/* Category and Amount */}
+                        <div className="flex items-center justify-between mb-1">
+                          <p className="font-semibold text-sm text-gray-900">
+                            {transaction.categories.name}
+                          </p>
+                          <span
+                            className={`font-bold text-sm ${
+                              transaction.type === "income"
+                                ? "text-green-600"
+                                : "text-red-600"
+                            }`}
+                          >
+                            {transaction.type === "income" ? "+" : "-"}Rp{" "}
+                            {transaction.amount.toLocaleString("id-ID")}
+                          </span>
+                        </div>
+
+                        {/* Note */}
+                        {transaction.note && (
+                          <p className="text-xs text-gray-600 mb-1 truncate">
+                            {transaction.note.length > 80
+                              ? `${transaction.note.slice(0, 80)}...`
+                              : transaction.note}
+                          </p>
+                        )}
+
+                        {/* Time and Type */}
+                        <div className="flex items-center justify-between">
+                          <p className="text-xs text-gray-500">
+                            {getTimeAgo(transaction.date_transaction)}
+                          </p>
+                          <span className="text-xs text-gray-400 capitalize">
+                            {transaction.type === "income"
+                              ? "Pemasukkan"
+                              : "Pengeluaran"}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-                <span
-                  className={`font-semibold text-sm ${
-                    transaction.type === "income"
-                      ? "text-green-600"
-                      : "text-red-600"
-                  }`}
+              )
+            ) : (
+              <div className="text-center py-12 text-gray-500">
+                <div className="w-16 h-16 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
+                  <div className="text-2xl">💳</div>
+                </div>
+                <div className="text-sm font-medium mb-1">
+                  Belum ada transaksi
+                </div>
+                <div className="text-xs">
+                  Mulai catat transaksi pertama Anda
+                </div>
+                <Button
+                  size="sm"
+                  className="mt-4 bg-green-500 hover:bg-green-600 text-white"
+                  onClick={() => router.push("/user/transactions/add")}
                 >
-                  {transaction.type === "income" ? "+" : "-"}Rp{" "}
-                  {transaction.amount.toLocaleString("id-ID")}
-                </span>
+                  <Plus className="w-4 h-4 mr-2" />
+                  Tambah Transaksi
+                </Button>
               </div>
-            ))}
+            )}
           </div>
+
+          {/* Summary when showing all transactions */}
+          {showAllTransactions && allTransactions.length > 0 && (
+            <div className="mt-6 pt-6 border-t border-gray-200">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="text-center p-3 bg-green-50 rounded-lg">
+                  <p className="text-xs text-green-700 mb-1">
+                    Total Pemasukkan
+                  </p>
+                  <p className="text-lg font-bold text-green-600">
+                    Rp{" "}
+                    {allTransactions
+                      .filter((t) => t.type === "income")
+                      .reduce((sum, t) => sum + t.amount, 0)
+                      .toLocaleString("id-ID")}
+                  </p>
+                </div>
+                <div className="text-center p-3 bg-red-50 rounded-lg">
+                  <p className="text-xs text-red-700 mb-1">Total Pengeluaran</p>
+                  <p className="text-lg font-bold text-red-600">
+                    Rp{" "}
+                    {allTransactions
+                      .filter((t) => t.type === "expense")
+                      .reduce((sum, t) => sum + t.amount, 0)
+                      .toLocaleString("id-ID")}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Show More/Less Button at the bottom */}
+          {allTransactions.length > 5 && (
+            <div className="mt-6 pt-4 border-t border-gray-200 text-center">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowAllTransactions(!showAllTransactions)}
+                className="text-blue-600 border-blue-600 hover:bg-blue-50 w-full"
+              >
+                {showAllTransactions ? "Lihat Sedikit" : "Lihat Lebih"}
+              </Button>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -910,11 +1296,11 @@ export default function DashboardPage() {
       <Dialog open={showAddMenu} onOpenChange={setShowAddMenu}>
         <DialogContent className="max-w-xs mx-auto">
           <div className="p-4 space-y-3">
-            {/* top card with account name + amount (minimal) */}
+            {/* top card with account name + amount (now using real data) */}
             <div className="bg-gray-200 rounded-lg p-4 text-center">
-              <div className="text-lg font-bold">{modalAccount.name}</div>
+              <div className="text-lg font-bold">{userAccount.name}</div>
               <div className="text-xl font-semibold mt-2">
-                Rp {modalAccount.balance.toLocaleString("id-ID")}
+                Rp {userAccount.balance.toLocaleString("id-ID")}
               </div>
             </div>
 

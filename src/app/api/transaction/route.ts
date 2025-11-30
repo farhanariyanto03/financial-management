@@ -75,10 +75,85 @@ export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
     const type = searchParams.get("type");
+    const userId = searchParams.get("user_id");
 
     const { user, error: authError } = await getAuthenticatedUser();
     if (authError || !user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // If requesting monthly data for cash flow chart
+    if (type === "monthly") {
+      const currentDate = new Date();
+      const currentMonth = currentDate.getMonth();
+      const currentYear = currentDate.getFullYear();
+
+      // Get last 6 months data
+      const monthlyData = [];
+      const currentMonthStats = {
+        currentIncome: 0,
+        currentExpense: 0,
+        previousIncome: 0,
+        previousExpense: 0,
+      };
+
+      for (let i = 5; i >= 0; i--) {
+        const targetDate = new Date(currentYear, currentMonth - i, 1);
+        const targetMonth = targetDate.getMonth() + 1;
+        const targetYear = targetDate.getFullYear();
+
+        const startDate = `${targetYear}-${targetMonth
+          .toString()
+          .padStart(2, "0")}-01`;
+        const nextMonth = targetMonth === 12 ? 1 : targetMonth + 1;
+        const nextYear = targetMonth === 12 ? targetYear + 1 : targetYear;
+        const endDate = `${nextYear}-${nextMonth.toString().padStart(2, "0")}-01`;
+
+        const { data: monthTransactions } = await supabaseAdmin
+          .from("transactions")
+          .select("type, amount")
+          .eq("user_id", user.id)
+          .is("deleted_at", null)
+          .gte("date_transaction", startDate)
+          .lt("date_transaction", endDate);
+
+        let monthIncome = 0;
+        let monthExpense = 0;
+
+        monthTransactions?.forEach((transaction: any) => {
+          if (transaction.type === "income") {
+            monthIncome += transaction.amount;
+          } else {
+            monthExpense += transaction.amount;
+          }
+        });
+
+        const monthName = targetDate.toLocaleDateString("id-ID", {
+          month: "short",
+        });
+
+        monthlyData.push({
+          month: monthName,
+          pemasukkan: monthIncome,
+          pengeluaran: monthExpense,
+        });
+
+        // Store current and previous month stats
+        if (i === 0) {
+          // Current month
+          currentMonthStats.currentIncome = monthIncome;
+          currentMonthStats.currentExpense = monthExpense;
+        } else if (i === 1) {
+          // Previous month
+          currentMonthStats.previousIncome = monthIncome;
+          currentMonthStats.previousExpense = monthExpense;
+        }
+      }
+
+      return NextResponse.json({
+        monthlyData,
+        currentMonthStats,
+      });
     }
 
     // If requesting dashboard stats
@@ -183,7 +258,9 @@ export async function GET(req: Request) {
       )
       .eq("user_id", user.id)
       .is("deleted_at", null)
-      .order("date_transaction", { ascending: false });
+      .order("date_transaction", { ascending: false })
+      .order("created_at", { ascending: false })
+      .limit(100); // Reasonable limit for performance
 
     if (error) {
       console.error(error);
