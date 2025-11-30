@@ -168,9 +168,28 @@ export default function DashboardPage() {
     0
   );
 
+  // Calculate percentage changes based on real data from API
+  const calculatePercentageChange = (current: number, previous: number) => {
+    if (previous === 0) {
+      return current > 0 ? 100 : 0; // 100% increase if previous was 0 and current > 0
+    }
+    return ((current - previous) / previous) * 100;
+  };
+
+  // Calculate real percentage changes
+  const incomeChangePercent = calculatePercentageChange(
+    currentMonthStats.currentIncome,
+    currentMonthStats.previousIncome
+  );
+
+  const expenseChangePercent = calculatePercentageChange(
+    currentMonthStats.currentExpense,
+    currentMonthStats.previousExpense
+  );
+
   // small percentage changes to show in the pie headers (adjust as needed)
-  const incomeChangePercent = 10; // positive => green
-  const expenseChangePercent = -4; // negative => red
+  // const incomeChangePercent = 10; // positive => green
+  // const expenseChangePercent = -4; // negative => red
 
   // Calculate savings comparison (remaining money after expenses)
   const currentSavings =
@@ -534,6 +553,8 @@ export default function DashboardPage() {
               previousExpense: 0,
             }
           );
+
+          console.log("Monthly stats received:", data.currentMonthStats);
         } else {
           console.error("Failed to fetch monthly data:", data.error);
         }
@@ -811,7 +832,7 @@ export default function DashboardPage() {
                   }`}
                 >
                   {incomeChangePercent >= 0 ? "+" : ""}
-                  {incomeChangePercent}%
+                  {incomeChangePercent.toFixed(1)}%
                 </div>
               </div>
             </div>
@@ -907,13 +928,13 @@ export default function DashboardPage() {
                 </div>
                 <div
                   className={`mt-1 text-sm font-semibold ${
-                    expenseChangePercent >= 0
+                    expenseChangePercent <= 0
                       ? "text-green-600"
                       : "text-red-600"
                   }`}
                 >
                   {expenseChangePercent >= 0 ? "+" : ""}
-                  {expenseChangePercent}%
+                  {expenseChangePercent.toFixed(1)}%
                 </div>
               </div>
             </div>
