@@ -611,14 +611,6 @@ export default function DashboardPage() {
   // Chart components as separate elements
   const BarChartCard = () => (
     <Card className="mb-6 shadow-lg mr-0 lg:mr-6 w-full flex-shrink-0">
-      <CardHeader>
-        <CardTitle className="text-lg">Grafik Arus Kas</CardTitle>
-        <div className="flex justify-between items-center">
-          <span className="text-sm text-gray-600">
-            Perbandingan pemasukkan dan pengeluaran bulanan
-          </span>
-        </div>
-      </CardHeader>
       <CardContent>
         <ChartContainer config={chartConfig} className="h-[300px] w-full">
           <ResponsiveContainer width="100%" height="100%">
@@ -663,6 +655,15 @@ export default function DashboardPage() {
             </BarChart>
           </ResponsiveContainer>
         </ChartContainer>
+
+        <CardHeader>
+          <CardTitle className="text-lg">Grafik Arus Kas</CardTitle>
+          <div className="flex justify-between items-center">
+            <span className="text-sm text-gray-600">
+              Perbandingan pemasukkan dan pengeluaran bulanan
+            </span>
+          </div>
+        </CardHeader>
 
         {/* Keterangan singkat di bawah grafik */}
         <div className="mt-4">
@@ -1035,9 +1036,9 @@ export default function DashboardPage() {
               className="flex transition-transform duration-300 ease-in-out"
               style={{ transform: `translateX(-${currentChartIndex * 100}%)` }}
             >
-              <BarChartCard />
               <IncomeChartCard />
               <ExpenseChartCard />
+              <BarChartCard />
             </div>
 
             {/* Previous Button - Centered */}
@@ -1078,9 +1079,9 @@ export default function DashboardPage() {
 
             {/* Chart Labels */}
             <span className="text-sm font-medium text-gray-700">
-              {currentChartIndex === 0 && "Grafik Arus Kas"}
-              {currentChartIndex === 1 && "Grafik Pemasukkan"}
-              {currentChartIndex === 2 && "Grafik Pengeluaran"}
+              {currentChartIndex === 0}
+              {currentChartIndex === 1}
+              {currentChartIndex === 2}
             </span>
           </div>
         </div>
