@@ -107,10 +107,10 @@ export default function DashboardPage() {
   const [hasGoal, setHasGoal] = useState(false);
   const [showAddMenu, setShowAddMenu] = useState(false);
   const [showAddAmountModal, setShowAddAmountModal] = useState(false);
-  const [addAmount, setAddAmount] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [userId, setUserId] = useState<string | null>(null);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [isGoalExpanded, setIsGoalExpanded] = useState(false); // Add this line
   const [realIncomeData, setRealIncomeData] = useState<
     Array<{ name: string; value: number; fill: string }>
   >([]);
@@ -535,10 +535,10 @@ export default function DashboardPage() {
   };
 
   // helper: format angka ke format ID (ribuan dengan titik)
-  const formatRupiah = (value: string) => {
-    const digits = value.replace(/\D/g, "");
-    return digits ? new Intl.NumberFormat("id-ID").format(Number(digits)) : "";
-  };
+  // const formatRupiah = (value: string) => {
+  //   const digits = value.replace(/\D/g, "");
+  //   return digits ? new Intl.NumberFormat("id-ID").format(Number(digits)) : "";
+  // };
 
   // Fetch monthly data for cash flow chart
   useEffect(() => {
@@ -947,142 +947,504 @@ export default function DashboardPage() {
           </Card>
         </div>
       ) : goal ? (
-        <div className="relative mb-6 mr-6">
-          <Card className="shadow-lg border-0 rounded-2xl overflow-visible">
-            <CardContent className="p-6">
-              {/* Header with title only */}
-              <div className="mb-4">
-                <h3 className="text-xl font-bold">{goal.destination}</h3>
-              </div>
-
-              {/* Progress bar */}
-              <div className="mb-4">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="h-2 flex-1 mr-3 bg-gray-200 rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-green-600"
-                      style={{
-                        width: `${Math.max(0, Math.min(100, progress))}%`,
-                      }}
-                    />
+        <div className="mb-6 flex items-start gap-3 mr-0 lg:mr-6">
+          {/* Goal Card */}
+          <Card className="shadow-lg border-0 rounded-2xl overflow-visible flex-1">
+            <CardContent className="p-4 lg:p-6">
+              {/* Mobile View - Collapsed State */}
+              <div className="lg:hidden">
+                <button
+                  onClick={() => setIsGoalExpanded(!isGoalExpanded)}
+                  className="w-full text-left"
+                >
+                  {/* Title and Percentage - Always visible */}
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-lg font-bold">{goal.destination}</h3>
+                    <span className="text-xl font-bold text-green-600">
+                      {progress.toFixed(0)}%
+                    </span>
                   </div>
-                  <span className="text-2xl font-bold text-green-600 min-w-[60px] text-right">
-                    {progress.toFixed(0)}%
-                  </span>
-                </div>
-              </div>
 
-              {/* Amount display */}
-              <div className="mb-6">
-                <div className="flex items-baseline gap-1">
-                  <span className="text-base text-gray-600">Rp</span>
-                  <span className="text-2xl font-bold text-black">
-                    {goal.current_amount.toLocaleString("id-ID")}
-                  </span>
-                  <span className="text-base text-gray-600 mx-1">/</span>
-                  <span className="text-xl font-semibold text-green-600">
-                    {goal.total_budget.toLocaleString("id-ID")}
-                  </span>
-                </div>
-              </div>
+                  {/* Progress bar - Always visible */}
+                  <div className="mb-3">
+                    <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-green-600 transition-all duration-300"
+                        style={{
+                          width: `${Math.max(0, Math.min(100, progress))}%`,
+                        }}
+                      />
+                    </div>
+                  </div>
 
-              {/* Min weekly amount */}
-              <div className="flex items-center justify-between mb-3 pb-3 border-b border-gray-200">
-                <span className="text-sm text-gray-600">
-                  Min month to reach goal
-                </span>
-                <span className="text-base font-bold text-black">
-                  Rp {goal.minWeekly.toLocaleString("id-ID")}
-                </span>
-              </div>
+                  {/* Chevron - Always visible */}
+                  {!isGoalExpanded && (
+                    <div className="flex justify-center">
+                      <ChevronDown className="w-5 h-5 text-gray-400" />
+                    </div>
+                  )}
+                </button>
 
-              {/* Target date with edit button */}
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-600">Target Date</span>
-                <div className="flex items-center gap-3">
-                  <span className="text-base font-bold text-black">
-                    {formatDate(goal.end_date)}
-                  </span>
-                  <Link href={`/user/goals/update/${goal.id}`}>
-                    <Button
-                      size="sm"
-                      className="bg-green-500 hover:bg-green-600 text-white h-8 px-5 rounded-lg font-medium"
+                {/* Expanded State - Show all details */}
+                {isGoalExpanded && (
+                  <div className="mt-4 space-y-4">
+                    {/* Amount display */}
+                    <div>
+                      <div className="flex items-baseline gap-1">
+                        <span className="text-base text-gray-600">Rp</span>
+                        <span className="text-2xl font-bold text-black">
+                          {goal.current_amount.toLocaleString("id-ID")}
+                        </span>
+                        <span className="text-base text-gray-600 mx-1">/</span>
+                        <span className="text-xl font-semibold text-green-600">
+                          {goal.total_budget.toLocaleString("id-ID")}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Min monthly amount */}
+                    <div className="flex items-center justify-between py-3 border-t border-gray-200">
+                      <span className="text-sm text-gray-600">
+                        Min month to reach goal
+                      </span>
+                      <span className="text-base font-bold text-black">
+                        Rp {goal.minWeekly.toLocaleString("id-ID")}
+                      </span>
+                    </div>
+
+                    {/* Target date with edit button */}
+                    <div className="flex items-center justify-between py-3 border-t border-gray-200">
+                      <span className="text-sm text-gray-600">Target Date</span>
+                      <div className="flex items-center gap-3">
+                        <span className="text-base font-bold text-black">
+                          {formatDate(goal.end_date)}
+                        </span>
+                        <Link href={`/user/goals/update/${goal.id}`}>
+                          <Button
+                            size="sm"
+                            className="bg-green-500 hover:bg-green-600 text-white h-8 px-4 rounded-lg font-medium"
+                          >
+                            Edit
+                          </Button>
+                        </Link>
+                      </div>
+                    </div>
+
+                    {/* Collapse button */}
+                    <button
+                      onClick={() => setIsGoalExpanded(false)}
+                      className="w-full flex items-center justify-center py-2 text-gray-500 hover:text-gray-700"
                     >
-                      Edit
-                    </Button>
-                  </Link>
+                      <ChevronDown className="w-5 h-5 rotate-180" />
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Desktop View - Always Expanded */}
+              <div className="hidden lg:block">
+                {/* Header with title only */}
+                <div className="mb-4">
+                  <h3 className="text-xl font-bold">{goal.destination}</h3>
+                </div>
+
+                {/* Progress bar */}
+                <div className="mb-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="h-2 flex-1 mr-3 bg-gray-200 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-green-600"
+                        style={{
+                          width: `${Math.max(0, Math.min(100, progress))}%`,
+                        }}
+                      />
+                    </div>
+                    <span className="text-2xl font-bold text-green-600 min-w-[60px] text-right">
+                      {progress.toFixed(0)}%
+                    </span>
+                  </div>
+                </div>
+
+                {/* Amount display */}
+                <div className="mb-6">
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-base text-gray-600">Rp</span>
+                    <span className="text-2xl font-bold text-black">
+                      {goal.current_amount.toLocaleString("id-ID")}
+                    </span>
+                    <span className="text-base text-gray-600 mx-1">/</span>
+                    <span className="text-xl font-semibold text-green-600">
+                      {goal.total_budget.toLocaleString("id-ID")}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Min weekly amount */}
+                <div className="flex items-center justify-between mb-3 pb-3 border-b border-gray-200">
+                  <span className="text-sm text-gray-600">
+                    Min month to reach goal
+                  </span>
+                  <span className="text-base font-bold text-black">
+                    Rp {goal.minWeekly.toLocaleString("id-ID")}
+                  </span>
+                </div>
+
+                {/* Target date with edit button */}
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-600">Target Date</span>
+                  <div className="flex items-center gap-3">
+                    <span className="text-base font-bold text-black">
+                      {formatDate(goal.end_date)}
+                    </span>
+                    <Link href={`/user/goals/update/${goal.id}`}>
+                      <Button
+                        size="sm"
+                        className="bg-green-500 hover:bg-green-600 text-white h-8 px-5 rounded-lg font-medium"
+                      >
+                        Edit
+                      </Button>
+                    </Link>
+                  </div>
                 </div>
               </div>
             </CardContent>
           </Card>
 
+          {/* Add Button - Always visible on both mobile and desktop */}
           <Button
             size="icon"
-            className="absolute top-1 -right-13 w-10 h-10 rounded-full bg-white hover:bg-green-600 text-white shadow-xl z-20 group"
             onClick={() => setShowAddAmountModal(true)}
+            className="w-12 h-12 rounded-full bg-white hover:bg-green-600 shadow-xl group flex-shrink-0"
           >
-            <Plus className="w-7 h-7 text-green-500 group-hover:text-white" />
+            <Plus className="w-6 h-6 text-green-500 group-hover:text-white" />
           </Button>
         </div>
       ) : null}
 
       {/* Charts Section - Mobile Swiper / Desktop Grid */}
       {isMobile ? (
-        // Mobile: Swiper View
+        // Mobile: Swiper View - Single Card with Changing Content
         <div className="mb-6 relative">
-          {/* Chart Container */}
-          <div className="overflow-hidden relative">
-            <div
-              className="flex transition-transform duration-300 ease-in-out"
-              style={{ transform: `translateX(-${currentChartIndex * 100}%)` }}
-            >
-              <IncomeChartCard />
-              <ExpenseChartCard />
-              <BarChartCard />
-            </div>
+          <Card className="shadow-lg">
+            <CardHeader>
+              <CardTitle className="text-lg">
+                {currentChartIndex === 0 && "Grafik Pemasukkan"}
+                {currentChartIndex === 1 && "Grafik Pengeluaran"}
+                {currentChartIndex === 2 && "Grafik Arus Kas"}
+              </CardTitle>
+              <div className="text-xs text-gray-500">
+                {currentChartIndex === 2
+                  ? "Perbandingan pemasukkan dan pengeluaran bulanan"
+                  : new Date().toLocaleDateString("id-ID", {
+                      month: "long",
+                      year: "numeric",
+                    })}
+              </div>
+            </CardHeader>
+            <CardContent className="relative">
+              {/* Navigation Arrows */}
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={prevChart}
+                className="absolute left-2 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white shadow-lg z-10 hover:bg-gray-50"
+              >
+                <ChevronLeft className="w-5 h-5" />
+              </Button>
 
-            {/* Previous Button - Centered */}
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={prevChart}
-              className="absolute left-2 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white shadow-lg z-10 hover:bg-gray-50"
-            >
-              <ChevronLeft className="w-5 h-5" />
-            </Button>
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={nextChart}
+                className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white shadow-lg z-10 hover:bg-gray-50"
+              >
+                <ChevronRight className="w-5 h-5" />
+              </Button>
 
-            {/* Next Button - Centered */}
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={nextChart}
-              className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white shadow-lg z-10 hover:bg-gray-50"
-            >
-              <ChevronRight className="w-5 h-5" />
-            </Button>
-          </div>
+              {/* Chart Content - Income Chart */}
+              {currentChartIndex === 0 && (
+                <div>
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex flex-col">
+                      <span className="text-sm font-medium text-gray-700">
+                        Bulan ini
+                      </span>
+                      <span className="text-2xl font-bold text-black">
+                        Rp {totalIncomeData.toLocaleString("id-ID")}
+                      </span>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-xs text-gray-500">
+                        vs periode sebelumnya
+                      </div>
+                      <div
+                        className={`mt-1 text-sm font-semibold ${
+                          incomeChangePercent >= 0
+                            ? "text-green-600"
+                            : "text-red-600"
+                        }`}
+                      >
+                        {incomeChangePercent >= 0 ? "+" : ""}
+                        {incomeChangePercent.toFixed(1)}%
+                      </div>
+                    </div>
+                  </div>
 
-          {/* Dot Indicators and Chart Labels */}
-          <div className="flex flex-col items-center mt-4 space-y-2">
-            {/* Dot Indicators */}
-            <div className="flex items-center space-x-2">
-              {[0, 1, 2].map((index) => (
-                <button
-                  key={index}
-                  onClick={() => goToChart(index)}
-                  className={`w-2 h-2 rounded-full transition-colors ${
-                    currentChartIndex === index ? "bg-green-500" : "bg-gray-300"
-                  }`}
-                />
-              ))}
-            </div>
+                  <div className="flex items-center gap-6">
+                    <div className="w-2/3 h-[300px]">
+                      {realIncomeData.length > 0 ? (
+                        <ChartContainer
+                          config={chartConfig}
+                          className="h-full w-full"
+                        >
+                          <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                              <Pie
+                                data={realIncomeData}
+                                cx="50%"
+                                cy="50%"
+                                outerRadius={80}
+                                innerRadius={40}
+                                paddingAngle={5}
+                                dataKey="value"
+                              >
+                                {realIncomeData.map((entry, index) => (
+                                  <Cell
+                                    key={`cell-${index}`}
+                                    fill={entry.fill}
+                                  />
+                                ))}
+                              </Pie>
+                              <ChartTooltip
+                                content={<ChartTooltipContent />}
+                                formatter={(value: number) => [
+                                  `Rp ${value.toLocaleString("id-ID")}`,
+                                  "Jumlah",
+                                ]}
+                              />
+                            </PieChart>
+                          </ResponsiveContainer>
+                        </ChartContainer>
+                      ) : (
+                        <div className="flex items-center justify-center h-full text-gray-500">
+                          <div className="text-center">
+                            <div className="text-4xl mb-2">📊</div>
+                            <div className="text-sm">Tidak ada data</div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
 
-            {/* Chart Labels */}
-            <span className="text-sm font-medium text-gray-700">
-              {currentChartIndex === 0}
-              {currentChartIndex === 1}
-              {currentChartIndex === 2}
-            </span>
+                    <div className="w-1/3 h-[300px] flex flex-col justify-center items-start space-y-2">
+                      {realIncomeData.length > 0 ? (
+                        realIncomeData.map((item, index) => (
+                          <div key={index} className="flex items-center gap-2">
+                            <div
+                              className="w-2 h-2 rounded-full"
+                              style={{ backgroundColor: item.fill }}
+                            />
+                            <span className="text-xs text-gray-600">
+                              {item.name}
+                            </span>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="text-xs text-gray-500 text-center w-full">
+                          Tidak ada data pemasukkan
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Chart Content - Expense Chart */}
+              {currentChartIndex === 1 && (
+                <div>
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex flex-col">
+                      <span className="text-sm font-medium text-gray-700">
+                        Bulan ini
+                      </span>
+                      <span className="text-2xl font-bold text-black">
+                        Rp {totalExpenseData.toLocaleString("id-ID")}
+                      </span>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-xs text-gray-500">
+                        vs periode sebelumnya
+                      </div>
+                      <div
+                        className={`mt-1 text-sm font-semibold ${
+                          expenseChangePercent <= 0
+                            ? "text-green-600"
+                            : "text-red-600"
+                        }`}
+                      >
+                        {expenseChangePercent >= 0 ? "+" : ""}
+                        {expenseChangePercent.toFixed(1)}%
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-6">
+                    <div className="w-2/3 h-[300px]">
+                      {realExpenseData.length > 0 ? (
+                        <ChartContainer
+                          config={chartConfig}
+                          className="h-full w-full"
+                        >
+                          <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                              <Pie
+                                data={realExpenseData}
+                                cx="50%"
+                                cy="50%"
+                                outerRadius={80}
+                                innerRadius={40}
+                                paddingAngle={5}
+                                dataKey="value"
+                              >
+                                {realExpenseData.map((entry, index) => (
+                                  <Cell
+                                    key={`cell-${index}`}
+                                    fill={entry.fill}
+                                  />
+                                ))}
+                              </Pie>
+                              <ChartTooltip
+                                content={<ChartTooltipContent />}
+                                formatter={(value: number) => [
+                                  `Rp ${value.toLocaleString("id-ID")}`,
+                                  "Jumlah",
+                                ]}
+                              />
+                            </PieChart>
+                          </ResponsiveContainer>
+                        </ChartContainer>
+                      ) : (
+                        <div className="flex items-center justify-center h-full text-gray-500">
+                          <div className="text-center">
+                            <div className="text-4xl mb-2">📊</div>
+                            <div className="text-sm">Tidak ada data</div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="w-1/3 h-[300px] flex flex-col justify-center items-start space-y-2">
+                      {realExpenseData.length > 0 ? (
+                        realExpenseData.map((item, index) => (
+                          <div key={index} className="flex items-center gap-2">
+                            <div
+                              className="w-2 h-2 rounded-full"
+                              style={{ backgroundColor: item.fill }}
+                            />
+                            <span className="text-xs text-gray-600">
+                              {item.name}
+                            </span>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="text-xs text-gray-500 text-center w-full">
+                          Tidak ada data pengeluaran
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Chart Content - Bar Chart */}
+              {currentChartIndex === 2 && (
+                <div>
+                  <ChartContainer
+                    config={chartConfig}
+                    className="h-[300px] w-full mb-4"
+                  >
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart
+                        data={
+                          monthlyChartData.length > 0
+                            ? monthlyChartData
+                            : monthlyData
+                        }
+                        margin={{ top: 20, right: 10, left: 10, bottom: 5 }}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="month" fontSize={12} />
+                        <YAxis
+                          tickFormatter={(value) =>
+                            `${(value / 1000000).toFixed(1)}M`
+                          }
+                          fontSize={12}
+                        />
+                        <ChartTooltip
+                          content={<ChartTooltipContent />}
+                          formatter={(value: number) => [
+                            `Rp ${value.toLocaleString("id-ID")}`,
+                            value ===
+                            (monthlyChartData.length > 0
+                              ? monthlyChartData
+                              : monthlyData
+                            ).find((d) => d.pemasukkan === value)?.pemasukkan
+                              ? "Pemasukkan"
+                              : "Pengeluaran",
+                          ]}
+                        />
+                        <Legend />
+                        <Bar
+                          dataKey="pemasukkan"
+                          fill="var(--color-pemasukkan)"
+                          name="Pemasukkan"
+                          radius={[2, 2, 0, 0]}
+                        />
+                        <Bar
+                          dataKey="pengeluaran"
+                          fill="var(--color-pengeluaran)"
+                          name="Pengeluaran"
+                          radius={[2, 2, 0, 0]}
+                        />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </ChartContainer>
+
+                  <div className="flex items-center gap-3 bg-gray-100 rounded-lg px-4 py-3">
+                    <div className="w-8 h-8 rounded-md bg-black flex items-center justify-center text-white">
+                      i
+                    </div>
+                    <div className="text-sm text-gray-700">
+                      <span>Kamu memiliki sisa uang </span>
+                      <span className="font-semibold">
+                        {isSavingMore ? "lebih banyak" : "lebih sedikit"}
+                      </span>
+                      <span> </span>
+                      <span
+                        className={`font-semibold ${
+                          isSavingMore ? "text-green-600" : "text-red-600"
+                        }`}
+                      >
+                        Rp {savingsChangeFormatted}
+                      </span>
+                      <span> dibanding bulan lalu</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Dot Indicators */}
+          <div className="flex items-center justify-center mt-4 space-x-2">
+            {[0, 1, 2].map((index) => (
+              <button
+                key={index}
+                onClick={() => goToChart(index)}
+                className={`w-2 h-2 rounded-full transition-colors ${
+                  currentChartIndex === index ? "bg-green-500" : "bg-gray-300"
+                }`}
+              />
+            ))}
           </div>
         </div>
       ) : (
