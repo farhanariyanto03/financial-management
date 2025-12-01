@@ -50,11 +50,34 @@ export default function AddTransactionPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // helper: get current datetime in Jakarta (Asia/Jakarta, UTC+7) formatted for datetime-local (YYYY-MM-DDTHH:MM)
+  const getJakartaLocalDatetime = () => {
+    const now = new Date();
+
+    const formatter = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Asia/Jakarta",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    });
+
+    const parts = formatter.formatToParts(now);
+    const get = (type: string) =>
+      parts.find((p) => p.type === type)?.value || "";
+
+    return `${get("year")}-${get("month")}-${get("day")}T${get("hour")}:${get(
+      "minute"
+    )}`;
+  };
+
   const [formData, setFormData] = useState({
     amount: "",
     category: "",
     note: "",
-    datetime: new Date().toISOString().slice(0, 16), // Format: YYYY-MM-DDTHH:mm
+    datetime: getJakartaLocalDatetime(), // Initialize with Jakarta time
   });
 
   // Fetch user profile

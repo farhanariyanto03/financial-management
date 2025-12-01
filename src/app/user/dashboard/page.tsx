@@ -667,31 +667,35 @@ export default function DashboardPage() {
 
         {/* Keterangan singkat di bawah grafik */}
         <div className="mt-4">
-          <div className="flex items-center gap-3 bg-gray-100 rounded-lg px-4 py-3 max-w-md">
-            <div className="w-8 h-8 rounded-md bg-black flex items-center justify-center text-white">
-              i
+          <div className="flex items-start gap-3 bg-gray-100 rounded-lg px-4 py-3">
+            <div className="w-8 h-8 rounded-md bg-black flex items-center justify-center text-white flex-shrink-0">
+              <span className="text-sm font-bold">i</span>
             </div>
-            <div className="text-sm text-gray-700">
-              <span>Kamu memiliki sisa uang </span>
-              <span className="font-semibold">
-                {isSavingMore ? "lebih banyak" : "lebih sedikit"}
-              </span>
-              <span> </span>
-              <span
-                className={`font-semibold ${
-                  isSavingMore ? "text-green-600" : "text-red-600"
-                }`}
-              >
-                Rp {savingsChangeFormatted}
-              </span>
-              <span> dibanding bulan lalu</span>
+            <div className="text-sm text-gray-700 flex-1">
+              <div className="leading-relaxed">
+                <span>Kamu memiliki sisa uang </span>
+                <span className="font-semibold">
+                  {isSavingMore ? "lebih banyak" : "lebih sedikit"}
+                </span>
+                <span> </span>
+                <span
+                  className={`font-semibold ${
+                    isSavingMore ? "text-green-600" : "text-red-600"
+                  }`}
+                >
+                  Rp {savingsChangeFormatted}
+                </span>
+                <span> dibanding bulan lalu</span>
+              </div>
               {savingsChange !== 0 && (
-                <>
-                  <span className="text-xs block mt-1">
-                    Sisa bulan ini: Rp {currentSavings.toLocaleString("id-ID")}|
+                <div className="text-xs text-gray-600 mt-2 pt-2 border-t border-gray-300">
+                  <div>
+                    Sisa bulan ini: Rp {currentSavings.toLocaleString("id-ID")}
+                  </div>
+                  <div>
                     Bulan lalu: Rp {previousSavings.toLocaleString("id-ID")}
-                  </span>
-                </>
+                  </div>
+                </div>
               )}
             </div>
           </div>
@@ -902,23 +906,34 @@ export default function DashboardPage() {
   return (
     <div className="min-h-screen bg-gray-50 p-4 pb-20">
       {/* Header */}
-      <div className="mb-6 flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold mb-2">Dashboard</h1>
-          <p className="text-sm text-muted-foreground">
-            Selamat datang di halaman dashboard!
-          </p>
+      <div className="mb-6 grid grid-cols-3 items-center">
+        {/* left spacer */}
+        <div />
+
+        {/* centered logo */}
+        <div className="flex justify-center">
+          <div
+            aria-hidden="true"
+            className="text-green-600 font-extrabold leading-none select-none"
+            style={{ fontSize: "100px", lineHeight: 1 }}
+          >
+            M
+          </div>
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={handleLogout}
-          disabled={isLoggingOut}
-          className="flex items-center gap-2 text-red-600 border-red-600 hover:bg-red-50"
-        >
-          <LogOut className="w-4 h-4" />
-          {isLoggingOut ? "Keluar..." : "Logout"}
-        </Button>
+
+        {/* right: logout button */}
+        <div className="flex justify-end">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleLogout}
+            disabled={isLoggingOut}
+            className="flex items-center gap-2 text-red-600 border-red-600 hover:bg-red-50"
+          >
+            <LogOut className="w-4 h-4" />
+            {isLoggingOut ? "Keluar..." : "Logout"}
+          </Button>
+        </div>
       </div>
 
       {/* Goal Section */}
@@ -1409,24 +1424,26 @@ export default function DashboardPage() {
                     </ResponsiveContainer>
                   </ChartContainer>
 
-                  <div className="flex items-center gap-3 bg-gray-100 rounded-lg px-4 py-3">
-                    <div className="w-8 h-8 rounded-md bg-black flex items-center justify-center text-white">
-                      i
+                  <div className="flex items-start gap-3 bg-gray-100 rounded-lg px-4 py-3">
+                    <div className="w-8 h-8 rounded-md bg-black flex items-center justify-center text-white flex-shrink-0">
+                      <span className="text-sm font-bold">i</span>
                     </div>
-                    <div className="text-sm text-gray-700">
-                      <span>Kamu memiliki sisa uang </span>
-                      <span className="font-semibold">
-                        {isSavingMore ? "lebih banyak" : "lebih sedikit"}
-                      </span>
-                      <span> </span>
-                      <span
-                        className={`font-semibold ${
-                          isSavingMore ? "text-green-600" : "text-red-600"
-                        }`}
-                      >
-                        Rp {savingsChangeFormatted}
-                      </span>
-                      <span> dibanding bulan lalu</span>
+                    <div className="text-sm text-gray-700 flex-1">
+                      <div className="leading-relaxed">
+                        <span>Kamu memiliki sisa uang </span>
+                        <span className="font-semibold">
+                          {isSavingMore ? "lebih banyak" : "lebih sedikit"}
+                        </span>
+                        <span> </span>
+                        <span
+                          className={`font-semibold ${
+                            isSavingMore ? "text-green-600" : "text-red-600"
+                          }`}
+                        >
+                          Rp {savingsChangeFormatted}
+                        </span>
+                        <span> dibanding bulan lalu</span>
+                      </div>
                     </div>
                   </div>
                 </div>
