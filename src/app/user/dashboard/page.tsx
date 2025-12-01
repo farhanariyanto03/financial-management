@@ -610,7 +610,7 @@ export default function DashboardPage() {
 
   // Chart components as separate elements
   const BarChartCard = () => (
-    <Card className="mb-6 shadow-lg mr-0 lg:mr-6 w-full flex-shrink-0">
+    <Card className="mb-6 shadow-lg mr-0 lg:mr-6 w-full flex-shrink-0 max-w-3xl mx-auto">
       <CardContent>
         <ChartContainer config={chartConfig} className="h-[300px] w-full">
           <ResponsiveContainer width="100%" height="100%">
@@ -1139,8 +1139,8 @@ export default function DashboardPage() {
       {/* Charts Section - Mobile Swiper / Desktop Grid */}
       {isMobile ? (
         // Mobile: Swiper View - Single Card with Changing Content
-        <div className="mb-6 relative">
-          <Card className="shadow-lg">
+        <div className="mb-6 relative max-w-3xl mx-auto w-full">
+          <Card className="shadow-lg w-full">
             <CardHeader>
               <CardTitle className="text-lg">
                 {currentChartIndex === 0 && "Grafik Pemasukkan"}
@@ -1479,7 +1479,7 @@ export default function DashboardPage() {
       )}
 
       {/* Recent Transactions */}
-      <Card className="shadow-lg mr-6">
+      <Card className="shadow-lg mx-auto w-full max-w-3xl">
         <CardHeader className="pb-4">
           <div>
             <CardTitle className="text-lg">Transaksi Terakhir</CardTitle>
