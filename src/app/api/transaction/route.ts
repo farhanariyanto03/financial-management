@@ -136,7 +136,6 @@ export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
     const type = searchParams.get("type");
-    const userId = searchParams.get("user_id");
 
     const { user, error: authError } = await getAuthenticatedUser();
     if (authError || !user) {

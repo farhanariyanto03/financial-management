@@ -51,10 +51,10 @@ export async function POST(req: Request) {
       );
     }
 
-    // Validate file size (5MB max)
-    if (file.size > 5 * 1024 * 1024) {
+    // Validate file size (3MB max)
+    if (file.size > 3 * 1024 * 1024) {
       return NextResponse.json(
-        { error: "File size must be less than 5MB" },
+        { error: "File size must be less than 3MB" },
         { status: 400 }
       );
     }
