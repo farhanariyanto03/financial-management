@@ -20,8 +20,8 @@ export default function AddFilePage() {
   const [cameraError, setCameraError] = useState<string>("");
   const [isLoadingCamera, setIsLoadingCamera] = useState(false);
 
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const videoRef = useRef<HTMLVideoElement>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
 
   // Cleanup camera stream on unmount
@@ -273,7 +273,7 @@ export default function AddFilePage() {
       );
 
       // Redirect to transaction editing page
-      router.push('/user/dashboard');
+      router.push("/user/dashboard");
     } catch (error) {
       console.error("Error uploading file:", error);
       showToastError(
@@ -398,8 +398,8 @@ interface FileUploadFormProps {
   onRemoveFile: () => void;
   onSubmit: (e: React.FormEvent) => void;
   isSubmitting: boolean;
-  fileInputRef: React.RefObject<HTMLInputElement>;
-  videoRef: React.RefObject<HTMLVideoElement>;
+  fileInputRef: React.RefObject<HTMLInputElement | null>;
+  videoRef: React.RefObject<HTMLVideoElement | null>;
 }
 
 function FileUploadForm({
