@@ -41,7 +41,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Get current user profile to check balance
+    // Get current user profile
     const { data: profile, error: profileError } = await supabaseAdmin
       .from("profiles")
       .select("initial_balance, kas")
@@ -58,15 +58,7 @@ export async function POST(req: Request) {
     // Gunakan initial_balance sebagai saldo saat ini
     const currentBalance = Number(profile.initial_balance);
 
-    // Validate balance for expenses
-    if (type === "pengeluaran" && amount > currentBalance) {
-      return NextResponse.json(
-        { error: "Insufficient balance" },
-        { status: 400 }
-      );
-    }
-
-    // Calculate new balance
+    // Calculate new balance (can be negative)
     const newBalance =
       type === "pengeluaran"
         ? currentBalance - amount
@@ -98,7 +90,7 @@ export async function POST(req: Request) {
       );
     }
 
-    // Update initial_balance instead of kas
+    // Update initial_balance (can be negative)
     const { error: updateError } = await supabaseAdmin
       .from("profiles")
       .update({ initial_balance: newBalance })
@@ -106,7 +98,7 @@ export async function POST(req: Request) {
 
     if (updateError) {
       console.error("Failed to update balance:", updateError);
-      // Optionally rollback transaction here
+      // Rollback transaction
       await supabaseAdmin
         .from("transactions")
         .delete()

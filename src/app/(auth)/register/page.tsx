@@ -70,8 +70,8 @@ export default function RegisterPage() {
             <div className="w-16 h-16 rounded-full bg-[#169d53] flex items-center justify-center mb-3">
               <span className="text-white font-bold text-2xl">GW</span>
             </div>
-            <span className="font-bold text-2xl text-[#169d53]">
-              Goal Wallet
+            <span className="font-bold text-5xl text-[#169d53]">
+              M
             </span>
             <p className="text-gray-500 text-sm mt-2">Buat akun baru Anda</p>
           </div>
@@ -178,7 +178,7 @@ export default function RegisterPage() {
         </div>
 
         <p className="text-center text-gray-500 text-xs mt-6">
-          © 2024 Goal Wallet. All rights reserved.
+          © 2025 M. All rights reserved.
         </p>
       </div>
     </div>

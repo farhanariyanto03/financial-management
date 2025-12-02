@@ -134,21 +134,6 @@ export default function AddTransactionPage() {
     }
 
     const transactionAmount = parseAmount(formData.amount);
-    // Always use kas for current balance, fallback to initial_balance only if kas is null/undefined
-    const currentBalance =
-      userProfile?.kas !== null && userProfile?.kas !== undefined
-        ? userProfile.kas
-        : userProfile?.initial_balance || 0;
-
-    // Validate balance for expenses
-    if (activeTab === "pengeluaran" && transactionAmount > currentBalance) {
-      showToastError(
-        `Saldo tidak mencukupi. Saldo tersedia: Rp ${currentBalance.toLocaleString(
-          "id-ID"
-        )}`
-      );
-      return;
-    }
 
     setIsSubmitting(true);
 
@@ -171,17 +156,6 @@ export default function AddTransactionPage() {
 
       if (response.ok) {
         showToastSuccess("Transaksi berhasil dicatat!");
-        // Update initial_balance field (seperti yang Anda inginkan)
-        if (userProfile) {
-          const newBalance =
-            activeTab === "pengeluaran"
-              ? currentBalance - transactionAmount
-              : currentBalance + transactionAmount;
-          setUserProfile({
-            ...userProfile,
-            initial_balance: newBalance, // Update initial_balance
-          });
-        }
         router.push("/user/dashboard");
       } else if (response.status === 401) {
         showToastError("Sesi telah berakhir, silakan login kembali");
@@ -314,21 +288,9 @@ function TransactionForm({
   userProfile,
   previewBalance,
 }: TransactionFormProps) {
-  // Gunakan initial_balance sebagai saldo yang ditampilkan
   const currentBalance = userProfile?.initial_balance || 0;
-  const transactionAmount = parseAmount(formData.amount);
+  // const transactionAmount = parseAmount(formData.amount);
   const accountName = userProfile?.account_name || "Cash";
-
-  console.log(
-    "Displaying balance:",
-    currentBalance,
-    "from initial_balance:",
-    userProfile?.initial_balance
-  ); // Debug log
-
-  // Check if expense exceeds balance
-  const exceedsBalance =
-    type === "pengeluaran" && transactionAmount > currentBalance;
 
   return (
     <form
@@ -365,21 +327,9 @@ function TransactionForm({
 
       {/* Amount Input */}
       <div className="space-y-3">
-        <p
-          className={`text-4xl sm:text-5xl lg:text-6xl font-light text-center ${
-            exceedsBalance ? "text-red-400" : "text-gray-400"
-          }`}
-        >
+        <p className="text-4xl sm:text-5xl lg:text-6xl font-light text-center text-gray-400">
           Rp {formData.amount ? formatRupiah(formData.amount) : "0"}
         </p>
-
-        {exceedsBalance && (
-          <div className="text-center">
-            <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg">
-              Jumlah melebihi saldo tersedia
-            </p>
-          </div>
-        )}
 
         {/* Amount input */}
         <Input
@@ -391,9 +341,7 @@ function TransactionForm({
           onChange={(e) =>
             setFormData({ ...formData, amount: formatRupiah(e.target.value) })
           }
-          className={`w-full border-none h-12 sm:h-14 text-sm sm:text-base rounded-xl px-4 py-0 text-center ${
-            exceedsBalance ? "bg-red-100" : "bg-gray-200"
-          }`}
+          className="w-full border-none h-12 sm:h-14 text-sm sm:text-base rounded-xl px-4 py-0 text-center bg-gray-200"
           required
         />
       </div>
@@ -448,18 +396,14 @@ function TransactionForm({
       {/* Submit Button */}
       <Button
         type="submit"
-        disabled={isSubmitting || exceedsBalance}
+        disabled={isSubmitting}
         className={`w-full h-12 sm:h-14 text-base sm:text-lg font-semibold rounded-xl ${
           type === "pemasukkan"
             ? "bg-green-600 hover:bg-green-700"
             : "bg-red-500 hover:bg-red-600"
         } disabled:opacity-50`}
       >
-        {isSubmitting
-          ? "Menyimpan..."
-          : exceedsBalance
-          ? "Saldo Tidak Mencukupi"
-          : "Catat"}
+        {isSubmitting ? "Menyimpan..." : "Catat"}
       </Button>
     </form>
   );
