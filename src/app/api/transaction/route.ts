@@ -124,6 +124,7 @@ export async function POST(req: Request) {
       newBalance: newBalance,
     });
   } catch (error) {
+    console.error("POST /api/transaction error:", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
@@ -149,7 +150,7 @@ export async function GET(req: Request) {
       const currentYear = currentDate.getFullYear();
 
       // Get last 6 months data
-      const monthlyData = [];
+      const monthlyData: Array<any> = [];
       const currentMonthStats = {
         currentIncome: 0,
         currentExpense: 0,
@@ -202,11 +203,9 @@ export async function GET(req: Request) {
 
         // Store current and previous month stats
         if (i === 0) {
-          // Current month
           currentMonthStats.currentIncome = monthIncome;
           currentMonthStats.currentExpense = monthExpense;
         } else if (i === 1) {
-          // Previous month
           currentMonthStats.previousIncome = monthIncome;
           currentMonthStats.previousExpense = monthExpense;
         }
@@ -231,10 +230,6 @@ export async function GET(req: Request) {
       const nextMonth = currentMonth === 12 ? 1 : currentMonth + 1;
       const nextYear = currentMonth === 12 ? currentYear + 1 : currentYear;
       const endDate = `${nextYear}-${nextMonth.toString().padStart(2, "0")}-01`;
-
-      console.log(
-        `Fetching transactions for current month: ${startDate} to ${endDate}`
-      );
 
       // Get category-wise breakdown for current month only
       const { data: categoryStats, error: statsError } = await supabaseAdmin
@@ -263,21 +258,13 @@ export async function GET(req: Request) {
         );
       }
 
-      console.log(
-        `Found ${categoryStats?.length || 0} transactions for current month`
-      );
-
       // Aggregate data by category and type
       const incomeByCategory: { [key: string]: number } = {};
       const expenseByCategory: { [key: string]: number } = {};
 
       categoryStats?.forEach((transaction: any) => {
         const categoryName = transaction.categories?.name || "Lainnya";
-        const amount = transaction.amount;
-
-        console.log(
-          `Processing: ${transaction.type} - ${categoryName} - ${amount}`
-        );
+        const amount = transaction.amount || 0;
 
         if (transaction.type === "income") {
           incomeByCategory[categoryName] =
@@ -287,9 +274,6 @@ export async function GET(req: Request) {
             (expenseByCategory[categoryName] || 0) + amount;
         }
       });
-
-      console.log("Income by category:", incomeByCategory);
-      console.log("Expense by category:", expenseByCategory);
 
       return NextResponse.json({
         incomeByCategory,
@@ -301,7 +285,7 @@ export async function GET(req: Request) {
       });
     }
 
-    // Original GET logic for all transactions
+    // GET all transactions (default)
     const { data, error } = await supabaseAdmin
       .from("transactions")
       .select(
@@ -320,20 +304,22 @@ export async function GET(req: Request) {
       )
       .eq("user_id", user.id)
       .is("deleted_at", null)
+      .is("file", null) // show only transactions without uploaded file
       .order("date_transaction", { ascending: false })
       .order("created_at", { ascending: false })
-      .limit(100); // Reasonable limit for performance
+      .limit(100);
 
     if (error) {
-      console.error(error);
+      console.error("Failed to fetch transactions:", error);
       return NextResponse.json(
         { error: "Failed to fetch transactions" },
         { status: 500 }
       );
     }
 
-    return NextResponse.json({ transactions: data });
+    return NextResponse.json({ transactions: data || [] });
   } catch (error) {
+    console.error("GET /api/transaction error:", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

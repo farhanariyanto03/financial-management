@@ -137,3 +137,37 @@ export async function PUT(
     );
   }
 }
+
+export async function DELETE(
+  req: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params;
+    const { searchParams } = new URL(req.url);
+    const itemId = searchParams.get("itemId");
+
+    if (!itemId || !isValidUUID(itemId)) {
+      return NextResponse.json({ error: "Invalid item id" }, { status: 400 });
+    }
+
+    // Delete the specific goal item
+    const { error } = await supabaseAdmin
+      .from("goal_items")
+      .delete()
+      .eq("id", itemId)
+      .eq("goal_id", id);
+
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error("Error deleting goal item:", error);
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 }
+    );
+  }
+}

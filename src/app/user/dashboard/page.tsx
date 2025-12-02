@@ -610,7 +610,7 @@ export default function DashboardPage() {
 
   // Chart components as separate elements
   const BarChartCard = () => (
-    <Card className="mb-6 shadow-lg mr-0 lg:mr-6 w-full flex-shrink-0 max-w-3xl mx-auto">
+    <Card className="mb-6 shadow-lg w-full flex-shrink-0">
       <CardContent>
         <ChartContainer config={chartConfig} className="h-[300px] w-full">
           <ResponsiveContainer width="100%" height="100%">
@@ -1531,7 +1531,8 @@ export default function DashboardPage() {
                             {/* Category and Amount */}
                             <div className="flex items-center justify-between mb-1">
                               <p className="font-semibold text-sm text-gray-900">
-                                {transaction.categories.name}
+                                {transaction.categories?.name ||
+                                  "Kategori tidak tersedia"}
                               </p>
                               <span
                                 className={`font-bold text-sm ${
@@ -1597,7 +1598,8 @@ export default function DashboardPage() {
                         {/* Category and Amount */}
                         <div className="flex items-center justify-between mb-1">
                           <p className="font-semibold text-sm text-gray-900">
-                            {transaction.categories.name}
+                            {transaction.categories?.name ||
+                              "Kategori tidak tersedia"}
                           </p>
                           <span
                             className={`font-bold text-sm ${

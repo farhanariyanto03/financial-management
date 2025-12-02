@@ -66,26 +66,8 @@ export default function ModalAddTransaction({
             </div>
           </div>
 
-          {/* small pager dots */}
-          <div className="flex justify-center mt-2">
-            <div className="w-6 h-2 rounded-full bg-green-600" />
-            <div className="w-2 h-2 rounded-full bg-gray-300 ml-2" />
-            <div className="w-2 h-2 rounded-full bg-gray-300 ml-2" />
-          </div>
-
           {/* action buttons */}
           <div className="flex flex-col gap-3 mt-3">
-            <Button
-              className="w-full h-12 bg-gray-300 hover:bg-gray-300 text-white rounded-lg"
-              disabled={loading}
-              onClick={() => {
-                onClose();
-                // router.push('/user/transactions/upload'); // optional
-              }}
-            >
-              Upload
-            </Button>
-
             <Button
               className="w-full h-12 bg-gray-400 hover:bg-gray-400 text-white rounded-lg"
               disabled={loading}
@@ -102,10 +84,10 @@ export default function ModalAddTransaction({
               disabled={loading}
               onClick={() => {
                 onClose();
-                // router.push('/user/transactions/photo');
+                router.push("/user/transactions/addFile");
               }}
             >
-              Foto
+              Foto atau Upload
             </Button>
           </div>
         </div>

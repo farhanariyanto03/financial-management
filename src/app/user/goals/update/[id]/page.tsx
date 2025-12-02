@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,6 +12,7 @@ import { showToastError, showToastSuccess } from "@/components/ui/alertToast";
 
 interface BudgetItem {
   id: string;
+  dbId?: string; // Add this to store actual database ID
   description: string;
   amount: string;
 }
@@ -57,6 +58,37 @@ export default function UpdateGoalPage() {
   ]);
   const [emergencyPocketAmount, setEmergencyPocketAmount] = useState("");
 
+  // Delete item
+  const deleteItem = async (
+    items: BudgetItem[],
+    setItems: React.Dispatch<React.SetStateAction<BudgetItem[]>>,
+    id: string,
+    dbId?: string
+  ) => {
+    // If item exists in database, call API to delete
+    if (dbId) {
+      try {
+        const response = await fetch(`/api/goal/${goalId}?itemId=${dbId}`, {
+          method: "DELETE",
+        });
+
+        if (!response.ok) {
+          showToastError("Failed to delete item");
+          return;
+        }
+
+        showToastSuccess("Item deleted successfully");
+      } catch (error) {
+        console.error("Error deleting item:", error);
+        showToastError("Failed to delete item");
+        return;
+      }
+    }
+
+    // Remove from local state
+    setItems(items.filter((item) => item.id !== id));
+  };
+
   // Fetch goal data
   useEffect(() => {
     const fetchGoal = async () => {
@@ -97,6 +129,7 @@ export default function UpdateGoalPage() {
 
             const budgetItem: BudgetItem = {
               id: `${index}`,
+              dbId: item.id, // Store the database ID
               description: item.item_name,
               amount: formattedAmount,
             };
@@ -364,6 +397,7 @@ export default function UpdateGoalPage() {
           setItems={setTransportation}
           updateItem={updateItem}
           addItem={addItem}
+          deleteItem={deleteItem}
         />
 
         {/* Accommodations */}
@@ -373,6 +407,7 @@ export default function UpdateGoalPage() {
           setItems={setAccommodations}
           updateItem={updateItem}
           addItem={addItem}
+          deleteItem={deleteItem}
         />
 
         {/* Activities */}
@@ -382,6 +417,7 @@ export default function UpdateGoalPage() {
           setItems={setActivities}
           updateItem={updateItem}
           addItem={addItem}
+          deleteItem={deleteItem}
         />
 
         {/* Miscellaneous */}
@@ -391,6 +427,7 @@ export default function UpdateGoalPage() {
           setItems={setMiscellaneous}
           updateItem={updateItem}
           addItem={addItem}
+          deleteItem={deleteItem}
         />
 
         {/* Emergency pocket - single label + input */}
@@ -454,6 +491,12 @@ interface BudgetSectionProps {
     items: BudgetItem[],
     setItems: React.Dispatch<React.SetStateAction<BudgetItem[]>>
   ) => void;
+  deleteItem: (
+    items: BudgetItem[],
+    setItems: React.Dispatch<React.SetStateAction<BudgetItem[]>>,
+    id: string,
+    dbId?: string
+  ) => void;
 }
 
 function BudgetSection({
@@ -462,6 +505,7 @@ function BudgetSection({
   setItems,
   updateItem,
   addItem,
+  deleteItem,
 }: BudgetSectionProps) {
   return (
     <div>
@@ -497,13 +541,21 @@ function BudgetSection({
                     setItems,
                     item.id,
                     "amount",
-                    // sekarang memanggil helper modul yang tersedia
                     formatRupiah(e.target.value)
                   )
                 }
                 className="bg-white border border-gray-300 h-12 rounded-lg pl-12 pr-3 text-right font-medium"
               />
             </div>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              onClick={() => deleteItem(items, setItems, item.id, item.dbId)}
+              className="h-12 w-12 text-red-500 hover:text-red-700 hover:bg-red-50"
+            >
+              <Trash2 className="w-5 h-5" />
+            </Button>
           </div>
         ))}
         <Button
