@@ -2,11 +2,10 @@
 
 import { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { getAuthUser } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 import { showToastError, showToastSuccess } from "@/components/ui/alertToast";
 
@@ -56,6 +55,21 @@ export default function AddGoalPage() {
     setItems([...items, newItem]);
   };
 
+  const deleteItem = (
+    items: BudgetItem[],
+    setItems: React.Dispatch<React.SetStateAction<BudgetItem[]>>,
+    id: string
+  ) => {
+    // Only remove from local state, no database operation
+    const filtered = items.filter((item) => item.id !== id);
+    // Keep at least one item
+    if (filtered.length === 0) {
+      setItems([{ id: Date.now().toString(), description: "", amount: "" }]);
+    } else {
+      setItems(filtered);
+    }
+  };
+
   const formatRupiah = (value: string) => {
     const digits = String(value || "").replace(/\D/g, "");
     if (!digits) return "";
@@ -78,21 +92,24 @@ export default function AddGoalPage() {
     );
   };
 
-  // Get logged-in user
+  // Get logged-in user - menggunakan endpoint profile seperti transaction
   useEffect(() => {
     const getUser = async () => {
       try {
-        const { user, error } = await getAuthUser();
+        const response = await fetch("/api/profile");
+        const data = await response.json();
 
-        if (error || !user) {
-          console.error("User not authenticated:", error);
+        if (!response.ok || !data.id) {
+          console.error("User not authenticated");
+          showToastError("Silakan login terlebih dahulu");
           router.push("/login");
           return;
         }
 
-        setUserId(user.id);
+        setUserId(data.id);
       } catch (error) {
         console.error("Error getting user:", error);
+        showToastError("Gagal mengambil data user");
         router.push("/login");
       } finally {
         setIsLoading(false);
@@ -294,6 +311,7 @@ export default function AddGoalPage() {
           setItems={setTransportation}
           updateItem={updateItem}
           addItem={addItem}
+          deleteItem={deleteItem}
         />
 
         {/* Accommodations */}
@@ -304,6 +322,7 @@ export default function AddGoalPage() {
           setItems={setAccommodations}
           updateItem={updateItem}
           addItem={addItem}
+          deleteItem={deleteItem}
         />
 
         {/* Activities */}
@@ -314,6 +333,7 @@ export default function AddGoalPage() {
           setItems={setActivities}
           updateItem={updateItem}
           addItem={addItem}
+          deleteItem={deleteItem}
         />
 
         {/* Miscellaneous */}
@@ -324,6 +344,7 @@ export default function AddGoalPage() {
           setItems={setMiscellaneous}
           updateItem={updateItem}
           addItem={addItem}
+          deleteItem={deleteItem}
         />
 
         {/* Emergency pocket - single label + input */}
@@ -388,6 +409,11 @@ interface BudgetSectionProps {
     items: BudgetItem[],
     setItems: React.Dispatch<React.SetStateAction<BudgetItem[]>>
   ) => void;
+  deleteItem: (
+    items: BudgetItem[],
+    setItems: React.Dispatch<React.SetStateAction<BudgetItem[]>>,
+    id: string
+  ) => void;
 }
 
 function BudgetSection({
@@ -397,6 +423,7 @@ function BudgetSection({
   setItems,
   updateItem,
   addItem,
+  deleteItem,
 }: BudgetSectionProps) {
   return (
     <div>
@@ -432,6 +459,15 @@ function BudgetSection({
                 className="bg-white border border-gray-300 h-12 rounded-lg pl-12 pr-3 text-right font-medium"
               />
             </div>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              onClick={() => deleteItem(items, setItems, item.id)}
+              className="h-12 w-12 text-red-500 hover:text-red-700 hover:bg-red-50"
+            >
+              <Trash2 className="w-5 h-5" />
+            </Button>
           </div>
         ))}
         <Button

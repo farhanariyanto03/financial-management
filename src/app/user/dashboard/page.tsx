@@ -1652,7 +1652,7 @@ export default function DashboardPage() {
                 <Button
                   size="sm"
                   className="mt-4 bg-green-500 hover:bg-green-600 text-white"
-                  onClick={() => router.push("/user/transactions/add")}
+                  onClick={() => setShowAddMenu(true)}
                 >
                   <Plus className="w-4 h-4 mr-2" />
                   Tambah Transaksi
