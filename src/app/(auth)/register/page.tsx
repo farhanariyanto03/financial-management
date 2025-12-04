@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { showToastError, showToastSuccess } from "@/components/ui/alertToast"; // import toast
+import { UserRound } from "lucide-react";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -68,12 +69,10 @@ export default function RegisterPage() {
           {/* Logo */}
           <div className="flex flex-col items-center mb-8">
             <div className="w-16 h-16 rounded-full bg-[#169d53] flex items-center justify-center mb-3">
-              <span className="text-white font-bold text-2xl">GW</span>
+              <UserRound className="w-8 h-8 text-white" />
             </div>
-            <span className="font-bold text-5xl text-[#169d53]">
-              M
-            </span>
-            <p className="text-gray-500 text-sm mt-2">Buat akun baru Anda</p>
+            <span className="font-bold text-5xl text-[#169d53]">M</span>
+            <p className="text-gray-500 text-sm mt-2">Masuk ke akun Anda</p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
