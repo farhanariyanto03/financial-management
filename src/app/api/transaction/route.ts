@@ -277,6 +277,9 @@ export async function GET(req: Request) {
     }
 
     // GET all transactions (default)
+    // Show transactions where:
+    // 1. file is null (manual transactions), OR
+    // 2. file is not null BUT amount, note, and category_id are all filled
     const { data, error } = await supabaseAdmin
       .from("transactions")
       .select(
@@ -295,7 +298,9 @@ export async function GET(req: Request) {
       )
       .eq("user_id", user.id)
       .is("deleted_at", null)
-      .is("file", null) // show only transactions without uploaded file
+      .or(
+        "file.is.null,and(file.not.is.null,amount.not.is.null,note.not.is.null,category_id.not.is.null)"
+      )
       .order("date_transaction", { ascending: false })
       .order("created_at", { ascending: false })
       .limit(100);
